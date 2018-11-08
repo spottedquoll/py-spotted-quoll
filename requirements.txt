@@ -1,7 +1,7 @@
 descartes == 1.1.0
 h5py == 2.8.0
 numpy == 1.15.1
-matplotlib == 2.2.3
+matplotlib == 3.0.0
 pandas == 0.23.4
 pyexcel == 0.5.9.1
 pyexcel-xls == 0.5.8

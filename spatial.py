@@ -1,5 +1,6 @@
 import shapefile
 import pyexcel as pe
+from math import radians, cos, sin, asin, sqrt
 
 
 def update_bounding_box(existing_box, new_box):
@@ -40,3 +41,20 @@ def read_sa2_meta(filename):
         sa2_meta_store.append(row)
 
     return sa2_meta_store
+
+
+def haversine(lat1, lon1, lat2, lon2):
+
+    r = 6372.8  # radius of earth km
+
+    d_lat = radians(lat2 - lat1)
+    d_lon = radians(lon2 - lon1)
+    lat1 = radians(lat1)
+    lat2 = radians(lat2)
+
+    a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+
+    distance = r * c
+
+    return distance
