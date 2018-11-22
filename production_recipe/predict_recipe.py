@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import os
+import datetime
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
@@ -50,26 +51,28 @@ append_to_existing = 0
 results_filename = work_directory + '/results/' + 'summary_results.csv'
 
 # If this is a new run, delete the existing file
-if append_to_existing == 1 and os.path.isfile(results_filename):
+if append_to_existing == 0 and os.path.isfile(results_filename):
     os.remove(results_filename)
 
-results_header = ['model', 'options', 'mae', 'mse', 'rmse', 'r2', 'explained_variance']
-models_to_build = ['decision_tree', 'random_forest', 'ridge_regression', 'k_nearest_neighbors'
-                   , 'kernel_ridge_regression', 'gradient_boost']
+results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
+models_to_build = ['ridge_regression', 'k_nearest_neighbors'
+                   , 'kernel_ridge_regression', 'gradient_boost'] # 'random_forest', 'decision_tree',
 
 # Decision tree model
 scaling_opts = [True, False]
 max_depth_options = [2, 5, 10, None]
 min_samples_leaf_options = [1, 5, 10]
 max_features_options = ['auto', 'sqrt']
+criterion_opts = ['mse']  # , 'mae'
+splitter_opts = ['best', 'random']
 
 model_type = 'decision_tree'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-    results = []
 
     for s in scaling_opts:
+
         if s is True:
             X_train_temp = X_train_scale
             X_test_temp = X_test_scale
@@ -80,28 +83,32 @@ if model_type in models_to_build:
         for md in max_depth_options:
             for ms in min_samples_leaf_options:
                 for mf in max_features_options:
-                    regressor = DecisionTreeRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf)
-                    regressor.fit(X_train_temp, y_train)
-                    y_pred = regressor.predict(X_test_temp)
+                    for c in criterion_opts:
+                        for sp in splitter_opts:
+                            regressor = DecisionTreeRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
+                                                              , splitter=sp, criterion=c)
+                            regressor.fit(X_train_temp, y_train)
+                            y_pred = regressor.predict(X_test_temp)
 
-                    results.append({'model': model_type, 'hyper-parameters': [md, ms, mf, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                    })
+                            results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
+                                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                        , 'r2': metrics.r2_score(y_test, y_pred)
+                                        , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                        , 'timestamp': str(datetime.datetime.now())
+                                        }]
 
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                            append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
+                                             header=results_header)
 
 # Random forest
 model_type = 'random_forest'
+max_depth_options = [5, 10, None]
 n_estimators_options = [50, 100]  # 200
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-
-    results = []
 
     for s in scaling_opts:
         if s is True:
@@ -115,28 +122,31 @@ if model_type in models_to_build:
             for ms in min_samples_leaf_options:
                 for mf in max_features_options:
                     for ne in n_estimators_options:
-                        regressor = RandomForestRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf, n_estimators=ne)
+                        regressor = RandomForestRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
+                                                          , n_estimators=ne)
                         regressor.fit(X_train_temp, y_train)
                         y_pred = regressor.predict(X_test_temp)
 
-                        results.append({'model': model_type, 'hyper-parameters': [md, ms, mf, ne, s]
-                                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                        , 'r2': metrics.r2_score(y_test, y_pred)
-                                        , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                        })
+                        results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, s]
+                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                    , 'r2': metrics.r2_score(y_test, y_pred)
+                                    , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                    , 'timestamp': str(datetime.datetime.now())
+                                    }]
 
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                        df = pd.DataFrame(results, columns=results_header)
+                        append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # Ridge regression
 fit_intercept_opts = [True, False]
 alpha_opts = [1e-15, 1e-10, 1e-8, 1e-4, 1e-3, 1e-2, 1, 5, 10, 20]
 normalise_opts = [True, False]
 
+model_type = 'ridge_regression'
 if model_type in models_to_build:
 
-    model_type = 'ridge_regression'
     print('Building ' + model_type + ' models')
     results = []
 
@@ -155,14 +165,17 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results.append({'model': model_type, 'hyper-parameters': [fi, a, nm, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                    })
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                    results = [{'model': model_type, 'hyper-parameters': [fi, a, nm, s]
+                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                , 'r2': metrics.r2_score(y_test, y_pred)
+                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                , 'timestamp': str(datetime.datetime.now())
+                                }]
+
+                    df = pd.DataFrame(results, columns=results_header)
+                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # k nearest neighbors
 n_neighbors_opts = [2, 5, 10]
@@ -190,14 +203,17 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results.append({'model': model_type, 'hyper-parameters': [n, w, a, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                    })
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                    results = [{'model': model_type, 'hyper-parameters': [n, w, a, s]
+                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                , 'r2': metrics.r2_score(y_test, y_pred)
+                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                , 'timestamp': str(datetime.datetime.now())
+                                 }]
+
+                    df = pd.DataFrame(results, columns=results_header)
+                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # Kernel ridge regression
 kernel_opts = ['linear', 'poly', 'rbf']
@@ -225,15 +241,17 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results.append({'model': model_type, 'hyper-parameters': [k, g, a, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                    })
+                    results = [{'model': model_type, 'hyper-parameters': [k, g, a, s]
+                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                , 'r2': metrics.r2_score(y_test, y_pred)
+                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                , 'timestamp': str(datetime.datetime.now())
+                                }]
 
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                    df = pd.DataFrame(results, columns=results_header)
+                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # Gradient boost regression
 loss_opts = ['ls', 'lad']
@@ -258,16 +276,19 @@ if model_type in models_to_build:
                 for l in loss_opts:
                     for lr in learning_rate_opts:
                         for mf in max_features_options:
-                            regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr, max_features=mf)
+                            regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr
+                                                                  , max_features=mf)
                             regressor.fit(X_train_temp, y_train)
                             y_pred = regressor.predict(X_test_temp)
 
-                            results.append({'model': model_type, 'hyper-parameters': [ne, l, lr, mf, s]
-                                            , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                            , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                            , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                            , 'r2': metrics.r2_score(y_test, y_pred)
-                                            , 'expl_var': metrics.explained_variance_score(y_test, y_pred)
-                                            })
+                            results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, mf, s]
+                                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                        , 'r2': metrics.r2_score(y_test, y_pred)
+                                        , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                        , 'timestamp': str(datetime.datetime.now())
+                                        }]
 
-    append_df_to_csv(pd.DataFrame(results), results_filename, sep=',', header=results_header)
+                            df = pd.DataFrame(results, columns=results_header)
+                            append_df_to_csv(df, results_filename, sep=',', header=results_header)
