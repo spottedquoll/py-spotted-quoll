@@ -1,16 +1,17 @@
 import h5py
 import numpy as np
 import pandas as pd
-import os
 import datetime
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVR
 from quoll_utils import append_df_to_csv
 
 work_directory = '/Volumes/slim/2017_ProductionRecipes/'
@@ -47,21 +48,26 @@ X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
 # Create results file
-append_to_existing = 0
-results_filename = work_directory + '/results/' + 'summary_results.csv'
+results_filename = work_directory + '/results/' + 'model_performance_summary.csv'
 
 # If this is a new run, delete the existing file
-if append_to_existing == 0 and os.path.isfile(results_filename):
-    os.remove(results_filename)
+# append_to_existing = 0
+# if append_to_existing == 0 and os.path.isfile(results_filename):
+#     os.remove(results_filename)
 
 results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
-models_to_build = ['ridge_regression', 'k_nearest_neighbors'
-                   , 'kernel_ridge_regression', 'gradient_boost'] # 'random_forest', 'decision_tree',
+
+# Models to run
+models_to_build = ['ada_boost']
+# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ridge_regression', 'linear',
+# 'k_nearest_neighbors' takes a long time to compute
+# 'kernel_ridge_regression' uses too much memory, (run on a subset?)
 
 # Decision tree model
 scaling_opts = [True, False]
 max_depth_options = [2, 5, 10, None]
 min_samples_leaf_options = [1, 5, 10]
+min_samples_split_opts = [2, 5, 10]
 max_features_options = ['auto', 'sqrt']
 criterion_opts = ['mse']  # , 'mae'
 splitter_opts = ['best', 'random']
@@ -76,72 +82,69 @@ if model_type in models_to_build:
         if s is True:
             X_train_temp = X_train_scale
             X_test_temp = X_test_scale
-        else:
-            X_train_temp = X_train
-            X_test_temp = X_test
 
-        for md in max_depth_options:
-            for ms in min_samples_leaf_options:
-                for mf in max_features_options:
-                    for c in criterion_opts:
-                        for sp in splitter_opts:
-                            regressor = DecisionTreeRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
-                                                              , splitter=sp, criterion=c)
-                            regressor.fit(X_train_temp, y_train)
-                            y_pred = regressor.predict(X_test_temp)
+            for md in max_depth_options:
+                for ms in min_samples_leaf_options:
+                    for mss in min_samples_split_opts:
+                        for mf in max_features_options:
+                            for c in criterion_opts:
+                                for sp in splitter_opts:
+                                    regressor = DecisionTreeRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
+                                                                      , splitter=sp, criterion=c, min_samples_split=mss)
+                                    regressor.fit(X_train_temp, y_train)
+                                    y_pred = regressor.predict(X_test_temp)
 
-                            results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
-                                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                        , 'r2': metrics.r2_score(y_test, y_pred)
-                                        , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
-                                        , 'timestamp': str(datetime.datetime.now())
-                                        }]
+                                    results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
+                                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                                , 'r2': metrics.r2_score(y_test, y_pred)
+                                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                                , 'timestamp': str(datetime.datetime.now())
+                                                }]
 
-                            append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
-                                             header=results_header)
+                                    append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
+                                                     header=results_header)
 
 # Random forest
 model_type = 'random_forest'
-max_depth_options = [5, 10, None]
-n_estimators_options = [50, 100]  # 200
+max_depth_options = [10, 50, None]  # 5,
+n_estimators_options = [50, 100]  # 150, 200
+min_samples_split_opts = [2, 5, 10]
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
 
     for s in scaling_opts:
-        if s is True:
-            X_train_temp = X_train_scale
-            X_test_temp = X_test_scale
-        else:
+        if s is not True:
             X_train_temp = X_train
             X_test_temp = X_test
 
-        for md in max_depth_options:
-            for ms in min_samples_leaf_options:
-                for mf in max_features_options:
-                    for ne in n_estimators_options:
-                        regressor = RandomForestRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
-                                                          , n_estimators=ne)
-                        regressor.fit(X_train_temp, y_train)
-                        y_pred = regressor.predict(X_test_temp)
+            for md in max_depth_options:
+                for ms in min_samples_leaf_options:
+                    for mss in min_samples_split_opts:
+                        for mf in max_features_options:
+                            for ne in n_estimators_options:
+                                regressor = RandomForestRegressor(max_depth=md, min_samples_leaf=ms, max_features=mf
+                                                                  , n_estimators=ne, min_samples_split=mss)
+                                regressor.fit(X_train_temp, y_train)
+                                y_pred = regressor.predict(X_test_temp)
 
-                        results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
-                                    , 'timestamp': str(datetime.datetime.now())
-                                    }]
+                                results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, s]
+                                            , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                            , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                            , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                            , 'r2': metrics.r2_score(y_test, y_pred)
+                                            , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                            , 'timestamp': str(datetime.datetime.now())
+                                            }]
 
-                        df = pd.DataFrame(results, columns=results_header)
-                        append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                                df = pd.DataFrame(results, columns=results_header)
+                                append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # Ridge regression
 fit_intercept_opts = [True, False]
-alpha_opts = [1e-15, 1e-10, 1e-8, 1e-4, 1e-3, 1e-2, 1, 5, 10, 20]
+alpha_opts = [1e-4, 1e-3, 1e-2, 1, 5, 10, 20]
 normalise_opts = [True, False]
 
 model_type = 'ridge_regression'
@@ -170,7 +173,7 @@ if model_type in models_to_build:
                                 , 'mse': metrics.mean_squared_error(y_test, y_pred)
                                 , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
                                 , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
                                 , 'timestamp': str(datetime.datetime.now())
                                 }]
 
@@ -178,9 +181,9 @@ if model_type in models_to_build:
                     append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
 # k nearest neighbors
-n_neighbors_opts = [2, 5, 10]
-weights_opts = ['uniform', 'distance']
-algorithm_opts = ['auto', 'ball_tree', 'kd_tree']
+n_neighbors_opts = [2, 5]
+weights_opts = ['distance']  # 'uniform',
+algorithm_opts = ['auto']  # , 'kd_tree' , 'ball_tree'
 
 model_type = 'k_nearest_neighbors'
 if model_type in models_to_build:
@@ -189,31 +192,29 @@ if model_type in models_to_build:
     results = []
 
     for s in scaling_opts:
-        if s is True:
+        if s is True:  # do not process unscaled case
             X_train_temp = X_train_scale
             X_test_temp = X_test_scale
-        else:
-            X_train_temp = X_train
-            X_test_temp = X_test
 
-        for n in n_neighbors_opts:
-            for w in weights_opts:
-                for a in algorithm_opts:
-                    regressor = KNeighborsRegressor(n_neighbors=n, weights=w, algorithm=a)
-                    regressor.fit(X_train_temp, y_train)
-                    y_pred = regressor.predict(X_test_temp)
+            for n in n_neighbors_opts:
+                for w in weights_opts:
+                    for a in algorithm_opts:
+                        regressor = KNeighborsRegressor(n_neighbors=n, weights=w, algorithm=a)
+                        regressor.fit(X_train_temp, y_train)
+                        y_pred = regressor.predict(X_test_temp)
 
-                    results = [{'model': model_type, 'hyper-parameters': [n, w, a, s]
-                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
-                                , 'timestamp': str(datetime.datetime.now())
-                                 }]
+                        results = [{'model': model_type, 'hyper-parameters': [n, w, a, s]
+                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                    , 'r2': metrics.r2_score(y_test, y_pred)
+                                    , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                    , 'timestamp': str(datetime.datetime.now())
+                                     }]
 
-                    df = pd.DataFrame(results, columns=results_header)
-                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                        df = pd.DataFrame(results, columns=results_header)
+                        append_df_to_csv(df, results_filename, sep=',', header=results_header)
+
 
 # Kernel ridge regression
 kernel_opts = ['linear', 'poly', 'rbf']
@@ -246,18 +247,85 @@ if model_type in models_to_build:
                                 , 'mse': metrics.mean_squared_error(y_test, y_pred)
                                 , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
                                 , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
+                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
                                 , 'timestamp': str(datetime.datetime.now())
                                 }]
 
                     df = pd.DataFrame(results, columns=results_header)
                     append_df_to_csv(df, results_filename, sep=',', header=results_header)
 
+
 # Gradient boost regression
-loss_opts = ['ls', 'lad']
-learning_rate_opts = [0.1, 0.5, 1]
+loss_opts = ['ls', 'huber']  # 'lad'
+learning_rate_opts = [0.01, 0.1, 0.5, 1]
+n_estimators_options = [100, 150, 200]
 
 model_type = 'gradient_boost'
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+
+    X_train_temp = X_train
+    X_test_temp = X_test
+
+    for ne in n_estimators_options:
+        for l in loss_opts:
+            for lr in learning_rate_opts:
+                for mf in max_features_options:
+                    regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr
+                                                          , max_features=mf)
+                    regressor.fit(X_train_temp, y_train)
+                    y_pred = regressor.predict(X_test_temp)
+
+                    results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, mf]
+                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                , 'r2': metrics.r2_score(y_test, y_pred)
+                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                , 'timestamp': str(datetime.datetime.now())
+                                }]
+
+                    df = pd.DataFrame(results, columns=results_header)
+                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
+
+
+# SVR
+kernel_opts = ['linear']  # , 'rbf'
+gamma_opts = [0.1, 1, 10]
+
+model_type = 'svr'
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+
+    results = []
+
+    X_train_temp = X_train_scale
+    X_test_temp = X_test_scale
+
+    for k in kernel_opts:
+        for g in gamma_opts:
+            regressor = SVR(kernel=k, gamma=g)
+            regressor.fit(X_train_temp, y_train)
+            y_pred = regressor.predict(X_test_temp)
+
+            results = [{'model': model_type, 'hyper-parameters': [k, g]
+                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                        , 'r2': metrics.r2_score(y_test, y_pred)
+                        , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                        , 'timestamp': str(datetime.datetime.now())
+                        }]
+
+            df = pd.DataFrame(results, columns=results_header)
+            append_df_to_csv(df, results_filename, sep=',', header=results_header)
+
+# Linear model
+fit_intercept_opts = [True, False]
+
+model_type = 'linear'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
@@ -272,23 +340,61 @@ if model_type in models_to_build:
             X_train_temp = X_train
             X_test_temp = X_test
 
-            for ne in n_estimators_options:
-                for l in loss_opts:
-                    for lr in learning_rate_opts:
-                        for mf in max_features_options:
-                            regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr
-                                                                  , max_features=mf)
-                            regressor.fit(X_train_temp, y_train)
-                            y_pred = regressor.predict(X_test_temp)
+        for f in fit_intercept_opts:
 
-                            results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, mf, s]
-                                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                        , 'r2': metrics.r2_score(y_test, y_pred)
-                                        , 'explained_variance': str(metrics.explained_variance_score(y_test, y_pred))
-                                        , 'timestamp': str(datetime.datetime.now())
-                                        }]
+            regressor = LinearRegression(fit_intercept=f)
+            regressor.fit(X_train_temp, y_train)
+            y_pred = regressor.predict(X_test_temp)
 
-                            df = pd.DataFrame(results, columns=results_header)
-                            append_df_to_csv(df, results_filename, sep=',', header=results_header)
+            results = [{'model': model_type, 'hyper-parameters': [f, s]
+                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                        , 'r2': metrics.r2_score(y_test, y_pred)
+                        , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                        , 'timestamp': str(datetime.datetime.now())
+                        }]
+
+            df = pd.DataFrame(results, columns=results_header)
+            append_df_to_csv(df, results_filename, sep=',', header=results_header)
+
+
+model_type = 'ada_boost'
+loss_opts = ['linear', 'square', 'exponential']
+min_samples_leaf_opts = [1, 5, 10]
+
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+
+    for s in scaling_opts:
+
+        if s is True:
+            X_train_temp = X_train_scale
+            X_test_temp = X_test_scale
+        else:
+            X_train_temp = X_train
+            X_test_temp = X_test
+
+        for ne in n_estimators_options:
+            for l in loss_opts:
+                for lr in learning_rate_opts:
+                    for ms in min_samples_split_opts:
+                        regressor = AdaBoostRegressor(DecisionTreeRegressor(max_depth=None, splitter='best'
+                                                                            , criterion='mse', min_samples_leaf=ms)
+                                                      , n_estimators=ne, loss=l, learning_rate=lr)
+
+                        regressor.fit(X_train_temp, y_train)
+                        y_pred = regressor.predict(X_test_temp)
+
+                        results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, s]
+                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                    , 'r2': metrics.r2_score(y_test, y_pred)
+                                    , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                    , 'timestamp': str(datetime.datetime.now())
+                                    }]
+
+                        append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
+                                         header=results_header)
