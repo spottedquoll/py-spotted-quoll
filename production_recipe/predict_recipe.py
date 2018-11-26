@@ -14,30 +14,30 @@ from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from quoll_utils import append_df_to_csv
 
-work_directory = '/Volumes/slim/2017_ProductionRecipes/'
+recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 
 # Read raw data
-f = h5py.File(work_directory + 'Results/' + 'a_coefficients_training_set.h5', 'r')
+f = h5py.File(recipe_directory + 'Results/' + 'a_coefficients_training_set.h5', 'r')
 table = np.array(f['table'])
 table = np.transpose(table)
 
 print('Read ' + str(table.shape[0]) + ' records')
 
 # Make dataframe
-header = ['y', 'i', 'j', 'country', 'year', 'margin']
+header = ['a', 'i', 'j', 'country', 'year', 'margin']
 df = pd.DataFrame(table, columns=header)
 
 # cleaning
-print('Max Aij: ' + str(df['y'].max()) + ', min Aij: ' + str(df['y'].min()))
-df = df[df.y <= 1]
-df = df[df.y >= 0]
+print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
+df = df[df.a <= 1]
+df = df[df.a >= 0]
 
 # One hot encode categorical variables
 df2 = pd.get_dummies(df, columns=['country', 'margin'])
 
 # Convert to arrays
-y = np.array(df2['y'])
-X = np.array(df2.drop('y', axis=1))
+y = np.array(df2['a'])
+X = np.array(df2.drop('a', axis=1))
 
 # Split training and validation sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)
@@ -48,7 +48,7 @@ X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
 # Create results file
-results_filename = work_directory + '/results/' + 'model_performance_summary.csv'
+results_filename = recipe_directory + '/results/' + 'model_performance_summary.csv'
 
 # If this is a new run, delete the existing file
 # append_to_existing = 0
@@ -130,7 +130,7 @@ if model_type in models_to_build:
                                 regressor.fit(X_train_temp, y_train)
                                 y_pred = regressor.predict(X_test_temp)
 
-                                results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, s]
+                                results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, mss, s]
                                             , 'mae': metrics.mean_absolute_error(y_test, y_pred)
                                             , 'mse': metrics.mean_squared_error(y_test, y_pred)
                                             , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
