@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
+from quoll.metrics import mean_absolute_percentage_error
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 
@@ -47,12 +48,13 @@ y_pred = regressor.predict(X_test)
 
 rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
 r2 = metrics.r2_score(y_test, y_pred)
-print('rmse: ' + str(rmse) + ' , r2: ' + str(r2))
+mape = mean_absolute_percentage_error(y_test, y_pred)
+print('rmse: ' + str(rmse) + ' , r2: ' + str(r2) + ', mape:' + str(mape))
 
 plt.figure()
 plt.scatter(y_test, y_pred, s=15)
-plt.xlabel('Aij (raw data)', fontsize=10, labelpad=10)
+plt.xlabel('Aij (actual)', fontsize=10, labelpad=10)
 plt.ylabel('Aij (predicted)', fontsize=10, labelpad=10)
-plt.title('Random forest model, RMSE: ' + '{:.3f}'.format(rmse) + ', r2: ' + '{:.3f}'.format(r2), fontsize=10)
+plt.title('Random forest model, RMSE: ' + '{:.3f}'.format(rmse) + ', r2: ' + '{:.3f}'.format(r2), fontsize=8)
 plt.savefig(recipe_directory + 'results/scatter_results_forest.png', dpi=700)
 plt.clf()

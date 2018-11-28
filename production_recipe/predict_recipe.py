@@ -12,7 +12,7 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
-from quoll_utils import append_df_to_csv
+from quoll.utils import append_df_to_csv
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 
