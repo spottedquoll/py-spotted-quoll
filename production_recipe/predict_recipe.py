@@ -13,27 +13,22 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from quoll.utils import append_df_to_csv
+from production_recipe.helpers import get_recipe_df
+
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
+dataset_dir = recipe_directory + '/data/'
+results_dir = recipe_directory + '/results/'
 
-# Read raw data
-f = h5py.File(recipe_directory + 'Results/' + 'a_coefficients_training_set.h5', 'r')
-table = np.array(f['table'])
-table = np.transpose(table)
+df, header = get_recipe_df(dataset_dir)
 
-print('Read ' + str(table.shape[0]) + ' records')
-
-# Make dataframe
-header = ['a', 'i', 'j', 'country', 'year', 'margin']
-df = pd.DataFrame(table, columns=header)
-
-# cleaning
+# Cleaning
 print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
 df = df[df.a <= 1]
 df = df[df.a >= 0]
 
 # One hot encode categorical variables
-df2 = pd.get_dummies(df, columns=['country', 'margin'])
+df2 = pd.get_dummies(df, columns=['country', 'margin'])  # , 'i', 'j'
 
 # Convert to arrays
 y = np.array(df2['a'])
@@ -48,18 +43,12 @@ X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
 # Create results file
-results_filename = recipe_directory + '/results/' + 'model_performance_summary.csv'
-
-# If this is a new run, delete the existing file
-# append_to_existing = 0
-# if append_to_existing == 0 and os.path.isfile(results_filename):
-#     os.remove(results_filename)
-
+results_filename = results_dir + 'model_performance_summary.csv'
 results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
 
 # Models to run
-models_to_build = ['ada_boost']
-# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ridge_regression', 'linear',
+models_to_build = ['decision_tree', 'ridge_regression', 'linear']
+# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ada_boost',
 # 'k_nearest_neighbors' takes a long time to compute
 # 'kernel_ridge_regression' uses too much memory, (run on a subset?)
 
