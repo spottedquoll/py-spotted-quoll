@@ -20,4 +20,7 @@ def get_recipe_df(dataset_dir):
     # Make dataframe
     df = pd.DataFrame(table, columns=header)
 
-    return df, header
+    # Years
+    year_labels = np.array(f['year_labels'])[0]
+
+    return df, header, year_labels
