@@ -1,39 +1,28 @@
-import h5py
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn import metrics
-from quoll.metrics import mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
+from production_recipe.helpers import get_recipe_df, perform_cleaning
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
+dataset_dir = recipe_directory + '/data/'
+results_dir = recipe_directory + '/results/'
 
-# Read raw data
-f = h5py.File(recipe_directory + 'results/' + 'a_coefficients_training_set.h5', 'r')
-table = np.array(f['table'])
-table = np.transpose(table)
+df, header, year_labels = get_recipe_df(dataset_dir, 25)
 
-# get column headers
-df_header = pd.read_csv(recipe_directory + 'results/' + 'header.csv')
-header = list(df_header.columns)
-header.remove(header[len(header)-1])
-year_labels = list(list(f['year_labels'])[0])
-
-# Make dataframe
-df = pd.DataFrame(table, columns=header)
-
-# cleaning
-print('Read ' + str(table.shape[0]) + ' records')
-print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
-df = df[df.a <= 1]
-df = df[df.a >= 0]
+df = perform_cleaning(df)
 
 # One hot encode categorical variables
 df2 = pd.get_dummies(df, columns=['country', 'margin'])
 
 # Filter for Australian table (2009, ba) (one table is not used to train the model) (leave one out)
-df_aus = df2.loc[(df2['margin_1.0'] == 1) & (df2['country_12.0'] == 1) & (df2['year'] == 20)]
+df_aus = df2.loc[(df2['country_12.0'] == 1) & (df2['year'] == 20)]
 df_aus.reset_index()
+
+if len(df_aus) == 0:
+    raise ValueError('Australian test set is empty')
 
 # Remove this single AUS table from the training data
 df2.drop(df2.loc[(df2['margin_1.0'] == 1) & (df2['country_12.0'] == 1) & (df2['year'] == 20)].index, inplace=True)
@@ -57,8 +46,8 @@ y_pred = regressor.predict(X_test)
 
 rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
 r2 = metrics.r2_score(y_test, y_pred)
-mape = mean_absolute_percentage_error(y_test, y_pred)
-print('rmse: ' + str(rmse) + ' , r2: ' + str(r2) + ', mape: ' + str(mape))
+mae = mean_absolute_error(y_test, y_pred)
+print('rmse: ' + str(rmse) + ' , r2: ' + str(r2) + ', mape: ' + str(mae))
 
 # rebuild matrices
 aus_data = df_aus['a'].values
@@ -108,10 +97,10 @@ regressor = RandomForestRegressor(max_depth=None, min_samples_leaf=1, max_featur
 regressor.fit(X_train, y_train)
 y_pred = regressor.predict(X_test)
 
-rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 r2 = metrics.r2_score(y_test, y_pred)
-mape = mean_absolute_percentage_error(y_test, y_pred)
-print('rmse: ' + str(rmse) + ' , r2: ' + str(r2) + ', mape: ' + str(mape))
+mae = mean_absolute_error(y_test, y_pred)
+print('rmse: ' + str(rmse) + ' , r2: ' + str(r2) + ', mae: ' + str(mae))
 
 # Make results matrix
 aus_predict = y_pred.reshape(25, 25)

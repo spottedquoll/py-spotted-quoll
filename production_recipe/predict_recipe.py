@@ -20,7 +20,7 @@ recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
 results_dir = recipe_directory + '/results/'
 
-df, header = get_recipe_df(dataset_dir, 25)
+df, header, year_labels = get_recipe_df(dataset_dir, 25)
 
 df = perform_cleaning(df)
 

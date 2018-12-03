@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
-from quoll.metrics import mean_absolute_percentage_error
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
