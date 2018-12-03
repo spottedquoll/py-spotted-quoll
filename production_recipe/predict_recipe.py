@@ -13,19 +13,16 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from quoll.utils import append_df_to_csv
-from production_recipe.helpers import get_recipe_df
+from production_recipe.helpers import get_recipe_df, perform_cleaning
 
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
 results_dir = recipe_directory + '/results/'
 
-df, header = get_recipe_df(dataset_dir)
+df, header = get_recipe_df(dataset_dir, 25)
 
-# Cleaning
-print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
-df = df[df.a <= 1]
-df = df[df.a >= 0]
+df = perform_cleaning(df)
 
 # One hot encode categorical variables
 df2 = pd.get_dummies(df, columns=['country', 'margin'])  # , 'i', 'j'

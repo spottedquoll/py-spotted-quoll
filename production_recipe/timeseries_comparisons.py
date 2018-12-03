@@ -2,21 +2,16 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
-from production_recipe.helpers import get_recipe_df
+from production_recipe.helpers import get_recipe_df, perform_cleaning
 import matplotlib.colors as mcolors
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
 results_dir = recipe_directory + '/results/'
 
-df, header, year_labels = get_recipe_df(dataset_dir)
+df, header, year_labels = get_recipe_df(dataset_dir, 25)
 
-# cleaning
-print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
-df = df[df.a <= 1]
-df = df[df.a >= 0]
-df = df[df.margin == 1]  # basic prices only
-print('Post cleaning records: ' + str(len(df)))
+df = perform_cleaning(df)
 
 # One hot encode categorical variables
 df2 = pd.get_dummies(df, columns=['country', 'margin'])
@@ -75,7 +70,7 @@ for l in linkages:
         # Known values
         df_known = df.loc[(df['country'] == c['root_number']) & (df['i'] == l_i) & (df['j'] == l_j)]
         plt.scatter(df_known['year'].values, df_known['a'].values, c=list(mcolors.to_rgba(c['colour']))
-                    , edgecolors='dimgrey')
+                    , edgecolors='dimgrey', alpha=0.9)
         legend_labels.append(c['name'] + '-actual')
 
         # Get encodings for this country
@@ -99,10 +94,10 @@ for l in linkages:
     plt.ylabel('aij', fontsize=10, labelpad=10)
     plt.ylim(bottom=-0.02)
     plt.xticks(y_tick_marks, y_labels)
+    plt.title('i=' + str(l_i) + ', j=' + str(l_j))
     if legend_written == 0:
         plt.legend(legend_labels, loc='upper center', bbox_to_anchor=(1.2, 0.8), fontsize='small', frameon=False)
         legend_written = 1
     plot_fname = 'scatter_timeseries_predictions_i' + str(l_i) + '_j' + str(l_j) + '.png'
     plt.savefig(recipe_directory + 'results/' + plot_fname, dpi=700, bbox_inches='tight')
     plt.clf()
-

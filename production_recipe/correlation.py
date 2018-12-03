@@ -1,20 +1,12 @@
-import h5py
-import numpy as np
+from production_recipe.helpers import get_recipe_df
 import pandas as pd
 import matplotlib.pyplot as plt
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
+dataset_dir = recipe_directory + '/data/'
 
 # Read raw data
-f = h5py.File(recipe_directory + 'Results/' + 'a_coefficients_training_set.h5', 'r')
-table = np.array(f['table'])
-table = np.transpose(table)
-
-print('Read ' + str(table.shape[0]) + ' records')
-
-# Make dataframe
-header = ['a', 'i', 'j', 'country', 'year', 'margin']
-df = pd.DataFrame(table, columns=header)
+df, header, year_labels = get_recipe_df(dataset_dir, 25)
 
 # cleaning
 print('Max Aij: ' + str(df['a'].max()) + ', min Aij: ' + str(df['a'].min()))
