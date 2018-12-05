@@ -1,4 +1,3 @@
-import h5py
 import numpy as np
 import pandas as pd
 import datetime
@@ -384,3 +383,5 @@ if model_type in models_to_build:
 
                         append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
                                          header=results_header)
+
+print('All finished')
