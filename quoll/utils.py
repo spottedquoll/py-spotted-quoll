@@ -1,4 +1,5 @@
 import os
+import numbers
 
 
 def append_df_to_csv(df, filename, header, sep=',', encoding='utf-8'):
@@ -24,3 +25,25 @@ def custom_tick_labels(all_labels, step_size):
                 counter = counter + 1
         else:
             counter = counter + 1
+
+
+def mixed_list_to_string(llist, delimiter):
+
+    final_str = ''
+    first = True
+
+    for item in llist:
+        if first:
+            d = ''
+            first = False
+        else:
+            d = delimiter
+
+        if item is None:
+            final_str = final_str + d + str('None')
+        elif isinstance(item, numbers.Number):
+            final_str = final_str + d + str(item)
+        else:
+            final_str = final_str + d + item
+
+    return final_str

@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.neighbors import KNeighborsRegressor
@@ -11,6 +11,7 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
 from quoll.utils import append_df_to_csv
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 
@@ -39,12 +40,13 @@ X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
 # Create results file
-results_filename = results_dir + 'model_performance_summary.csv'
+all_results_filename = results_dir + 'model_performance_summary.csv'
 results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
+best_results_filename = results_dir + 'model_performance_summary.csv'
 
 # Models to run
 models_to_build = ['decision_tree', 'ridge_regression', 'linear']
-# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ada_boost',
+# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ada_boost', 'logistic_regression', 'mpl'
 # 'k_nearest_neighbors' takes a long time to compute
 # 'kernel_ridge_regression' uses too much memory, (run on a subset?)
 
@@ -61,6 +63,7 @@ model_type = 'decision_tree'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
 
@@ -79,17 +82,23 @@ if model_type in models_to_build:
                                     regressor.fit(X_train_temp, y_train)
                                     y_pred = regressor.predict(X_test_temp)
 
-                                    results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
+                                    results = {'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
                                                 , 'mae': metrics.mean_absolute_error(y_test, y_pred)
                                                 , 'mse': metrics.mean_squared_error(y_test, y_pred)
                                                 , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
                                                 , 'r2': metrics.r2_score(y_test, y_pred)
                                                 , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
                                                 , 'timestamp': str(datetime.datetime.now())
-                                                }]
+                                                }
 
-                                    append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
-                                                     header=results_header)
+                                    append_df_to_csv(pd.DataFrame([results], columns=results_header)
+                                                     , all_results_filename, sep=',', header=results_header)
+
+                                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                                        best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header), best_results_filename, sep=',',
+                     header=results_header)
 
 # Random forest
 model_type = 'random_forest'
@@ -125,7 +134,7 @@ if model_type in models_to_build:
                                             }]
 
                                 df = pd.DataFrame(results, columns=results_header)
-                                append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                                append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 # Ridge regression
 fit_intercept_opts = [True, False]
@@ -136,7 +145,6 @@ model_type = 'ridge_regression'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-    results = []
 
     for s in scaling_opts:
         if s is True:
@@ -163,7 +171,7 @@ if model_type in models_to_build:
                                 }]
 
                     df = pd.DataFrame(results, columns=results_header)
-                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                    append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 # k nearest neighbors
 n_neighbors_opts = [2, 5]
@@ -174,7 +182,6 @@ model_type = 'k_nearest_neighbors'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-    results = []
 
     for s in scaling_opts:
         if s is True:  # do not process unscaled case
@@ -198,7 +205,7 @@ if model_type in models_to_build:
                                      }]
 
                         df = pd.DataFrame(results, columns=results_header)
-                        append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                        append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 
 # Kernel ridge regression
@@ -210,7 +217,6 @@ model_type = 'kernel_ridge_regression'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-    results = []
 
     for s in scaling_opts:
         if s is True:
@@ -237,7 +243,7 @@ if model_type in models_to_build:
                                 }]
 
                     df = pd.DataFrame(results, columns=results_header)
-                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                    append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 
 # Gradient boost regression
@@ -272,7 +278,7 @@ if model_type in models_to_build:
                                 }]
 
                     df = pd.DataFrame(results, columns=results_header)
-                    append_df_to_csv(df, results_filename, sep=',', header=results_header)
+                    append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 
 # SVR
@@ -283,8 +289,6 @@ model_type = 'svr'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-
-    results = []
 
     X_train_temp = X_train_scale
     X_test_temp = X_test_scale
@@ -305,7 +309,7 @@ if model_type in models_to_build:
                         }]
 
             df = pd.DataFrame(results, columns=results_header)
-            append_df_to_csv(df, results_filename, sep=',', header=results_header)
+            append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 # Linear model
 fit_intercept_opts = [True, False]
@@ -314,8 +318,6 @@ model_type = 'linear'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-
-    results = []
 
     for s in scaling_opts:
         if s is True:
@@ -341,7 +343,7 @@ if model_type in models_to_build:
                         }]
 
             df = pd.DataFrame(results, columns=results_header)
-            append_df_to_csv(df, results_filename, sep=',', header=results_header)
+            append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
 
 
 model_type = 'ada_boost'
@@ -381,7 +383,90 @@ if model_type in models_to_build:
                                     , 'timestamp': str(datetime.datetime.now())
                                     }]
 
-                        append_df_to_csv(pd.DataFrame(results, columns=results_header), results_filename, sep=',',
+                        append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
                                          header=results_header)
+
+
+model_type = 'logistic_regression'
+penalties = ['l1', 'l2']
+gamma_opts = [0.1, 1, 10]
+intercept_opts = [True, False]
+
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+    results = []
+
+    for s in scaling_opts:
+        if s is True:
+            X_train_temp = X_train_scale
+            X_test_temp = X_test_scale
+        else:
+            X_train_temp = X_train
+            X_test_temp = X_test
+
+        for p in penalties:
+            for g in gamma_opts:
+                for i in intercept_opts:
+
+                    regressor = LogisticRegression(C=g, class_weight=None, dual=False, fit_intercept=i
+                                                   , intercept_scaling=1, max_iter=20, multi_class='ovr', n_jobs=3
+                                                   , penalty=p, solver='liblinear', tol=0.0001)
+
+                    regressor.fit(X_train_temp, y_train)
+                    y_pred = regressor.predict(X_test_temp)
+
+                    results = [{'model': model_type, 'hyper-parameters': [p, g, i, s]
+                                   , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                                   , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                                   , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                                   , 'r2': metrics.r2_score(y_test, y_pred)
+                                   , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                   , 'timestamp': str(datetime.datetime.now())
+                                }]
+
+                    append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
+                                     header=results_header)
+
+
+model_type = 'mpl'
+solvers = ['adam', 'lbfgs', 'sgd']
+gamma_opts = [0.1, 1, 10]
+activation_opts = ['identity', 'relu'] # 'logistic’, ‘tanh’,
+
+
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+    results = []
+
+    for s in scaling_opts:
+        if s is True:
+            X_train_temp = X_train_scale
+            X_test_temp = X_test_scale
+        else:
+            X_train_temp = X_train
+            X_test_temp = X_test
+
+        for a in alpha_opts:
+            for sv in solvers:
+                for act in activation_opts:
+
+                    regressor = MLPRegressor(alpha=a, solver=sv, activation=act)
+
+                    regressor.fit(X_train_temp, y_train)
+                    y_pred = regressor.predict(X_test_temp)
+
+                    results = [{'model': model_type, 'hyper-parameters': [a, sv, s]
+                               , 'mae': metrics.mean_absolute_error(y_test, y_pred)
+                               , 'mse': metrics.mean_squared_error(y_test, y_pred)
+                               , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+                               , 'r2': metrics.r2_score(y_test, y_pred)
+                               , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                               , 'timestamp': str(datetime.datetime.now())
+                                }]
+
+                    append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
+                                     header=results_header)
 
 print('All finished')
