@@ -3,9 +3,9 @@ import pandas as pd
 import datetime
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
-from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, explained_variance_score
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.preprocessing import MinMaxScaler
@@ -20,8 +20,12 @@ recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
 results_dir = recipe_directory + '/results/'
 
-df, header, year_labels = get_recipe_df(dataset_dir, 25)
+# Create results file
+all_results_filename = results_dir + 'model_performance_summary.csv'
+results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
+best_results_filename = results_dir + 'best_in_class_model_performance.csv'
 
+df, header, year_labels = get_recipe_df(dataset_dir, 25)
 df = perform_cleaning(df)
 
 # One hot encode categorical variables
@@ -39,14 +43,13 @@ scaler = MinMaxScaler()
 X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
-# Create results file
-all_results_filename = results_dir + 'model_performance_summary.csv'
-results_header = ['model', 'hyper-parameters', 'mae', 'mse', 'rmse', 'r2', 'explained_variance', 'timestamp']
-best_results_filename = results_dir + 'model_performance_summary.csv'
-
 # Models to run
-models_to_build = ['decision_tree', 'ridge_regression', 'linear']
-# 'decision_tree', 'random_forest', 'gradient_boost', 'svr', 'ada_boost', 'logistic_regression', 'mpl'
+models_to_build = ['mpl']
+
+# 'decision_tree', ,
+#, 'ridge_regression', 'linear', 'decision_tree', 'random_forest', 'gradient_boost'
+#              , 'ada_boost']
+# , 'svr'
 # 'k_nearest_neighbors' takes a long time to compute
 # 'kernel_ridge_regression' uses too much memory, (run on a subset?)
 
@@ -82,14 +85,14 @@ if model_type in models_to_build:
                                     regressor.fit(X_train_temp, y_train)
                                     y_pred = regressor.predict(X_test_temp)
 
-                                    results = {'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, s]
-                                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                                , 'r2': metrics.r2_score(y_test, y_pred)
-                                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                    results = {'model': model_type, 'hyper-parameters': [md, ms, mf, sp, c, mss, s]
+                                                , 'mae': mean_absolute_error(y_test, y_pred)
+                                                , 'mse': mean_squared_error(y_test, y_pred)
+                                                , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                                , 'r2': r2_score(y_test, y_pred)
+                                                , 'explained_variance': explained_variance_score(y_test, y_pred)
                                                 , 'timestamp': str(datetime.datetime.now())
-                                                }
+                                               }
 
                                     append_df_to_csv(pd.DataFrame([results], columns=results_header)
                                                      , all_results_filename, sep=',', header=results_header)
@@ -108,6 +111,7 @@ min_samples_split_opts = [2, 5, 10]
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
         if s is not True:
@@ -124,17 +128,24 @@ if model_type in models_to_build:
                                 regressor.fit(X_train_temp, y_train)
                                 y_pred = regressor.predict(X_test_temp)
 
-                                results = [{'model': model_type, 'hyper-parameters': [md, ms, mf, ne, mss, s]
-                                            , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                            , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                            , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                            , 'r2': metrics.r2_score(y_test, y_pred)
-                                            , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                                results = {'model': model_type, 'hyper-parameters': [md, ms, mf, ne, mss, s]
+                                            , 'mae': mean_absolute_error(y_test, y_pred)
+                                            , 'mse': mean_squared_error(y_test, y_pred)
+                                            , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                            , 'r2': r2_score(y_test, y_pred)
+                                            , 'explained_variance': explained_variance_score(y_test, y_pred)
                                             , 'timestamp': str(datetime.datetime.now())
-                                            }]
+                                            }
 
-                                df = pd.DataFrame(results, columns=results_header)
+                                df = pd.DataFrame([results], columns=results_header)
                                 append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                                if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                                    best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 # Ridge regression
 fit_intercept_opts = [True, False]
@@ -145,6 +156,7 @@ model_type = 'ridge_regression'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
         if s is True:
@@ -157,21 +169,28 @@ if model_type in models_to_build:
         for fi in fit_intercept_opts:
             for a in alpha_opts:
                 for nm in normalise_opts:
-                    regressor = Ridge(alpha=a, normalize=nm, fit_intercept=fi)
+                    regressor = Ridge(fit_intercept=fi, alpha=a, normalize=nm)
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results = [{'model': model_type, 'hyper-parameters': [fi, a, nm, s]
-                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                    results = {'model': model_type, 'hyper-parameters': [fi, a, nm, s]
+                                , 'mae': mean_absolute_error(y_test, y_pred)
+                                , 'mse': mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                , 'r2': r2_score(y_test, y_pred)
+                                , 'explained_variance': explained_variance_score(y_test, y_pred)
                                 , 'timestamp': str(datetime.datetime.now())
-                                }]
+                                }
 
-                    df = pd.DataFrame(results, columns=results_header)
+                    df = pd.DataFrame([results], columns=results_header)
                     append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                        best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 # k nearest neighbors
 n_neighbors_opts = [2, 5]
@@ -182,6 +201,7 @@ model_type = 'k_nearest_neighbors'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
         if s is True:  # do not process unscaled case
@@ -195,17 +215,24 @@ if model_type in models_to_build:
                         regressor.fit(X_train_temp, y_train)
                         y_pred = regressor.predict(X_test_temp)
 
-                        results = [{'model': model_type, 'hyper-parameters': [n, w, a, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                        results = {'model': model_type, 'hyper-parameters': [n, w, a, s]
+                                    , 'mae': mean_absolute_error(y_test, y_pred)
+                                    , 'mse': mean_squared_error(y_test, y_pred)
+                                    , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                    , 'r2': r2_score(y_test, y_pred)
+                                    , 'explained_variance': explained_variance_score(y_test, y_pred)
                                     , 'timestamp': str(datetime.datetime.now())
-                                     }]
+                                     }
 
-                        df = pd.DataFrame(results, columns=results_header)
+                        df = pd.DataFrame([results], columns=results_header)
                         append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                        if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                            best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 
 # Kernel ridge regression
@@ -217,6 +244,7 @@ model_type = 'kernel_ridge_regression'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
         if s is True:
@@ -233,17 +261,24 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results = [{'model': model_type, 'hyper-parameters': [k, g, a, s]
-                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                    results = {'model': model_type, 'hyper-parameters': [k, g, a, s]
+                                , 'mae': mean_absolute_error(y_test, y_pred)
+                                , 'mse': mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                , 'r2': r2_score(y_test, y_pred)
+                                , 'explained_variance': explained_variance_score(y_test, y_pred)
                                 , 'timestamp': str(datetime.datetime.now())
-                                }]
+                                }
 
-                    df = pd.DataFrame(results, columns=results_header)
+                    df = pd.DataFrame([results], columns=results_header)
                     append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                        best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 
 # Gradient boost regression
@@ -255,6 +290,7 @@ model_type = 'gradient_boost'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     X_train_temp = X_train
     X_test_temp = X_test
@@ -268,17 +304,24 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, mf]
-                                , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                , 'r2': metrics.r2_score(y_test, y_pred)
-                                , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                    results = {'model': model_type, 'hyper-parameters': [ne, l, lr, mf]
+                                , 'mae': mean_absolute_error(y_test, y_pred)
+                                , 'mse': mean_squared_error(y_test, y_pred)
+                                , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                , 'r2': r2_score(y_test, y_pred)
+                                , 'explained_variance': explained_variance_score(y_test, y_pred)
                                 , 'timestamp': str(datetime.datetime.now())
-                                }]
+                               }
 
-                    df = pd.DataFrame(results, columns=results_header)
+                    df = pd.DataFrame([results], columns=results_header)
                     append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                        best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 
 # SVR
@@ -289,6 +332,7 @@ model_type = 'svr'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     X_train_temp = X_train_scale
     X_test_temp = X_test_scale
@@ -299,17 +343,24 @@ if model_type in models_to_build:
             regressor.fit(X_train_temp, y_train)
             y_pred = regressor.predict(X_test_temp)
 
-            results = [{'model': model_type, 'hyper-parameters': [k, g]
-                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                        , 'r2': metrics.r2_score(y_test, y_pred)
-                        , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+            results = {'model': model_type, 'hyper-parameters': [k, g]
+                        , 'mae': mean_absolute_error(y_test, y_pred)
+                        , 'mse': mean_squared_error(y_test, y_pred)
+                        , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                        , 'r2': r2_score(y_test, y_pred)
+                        , 'explained_variance': explained_variance_score(y_test, y_pred)
                         , 'timestamp': str(datetime.datetime.now())
-                        }]
+                       }
 
-            df = pd.DataFrame(results, columns=results_header)
+            df = pd.DataFrame([results], columns=results_header)
             append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+            if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 # Linear model
 fit_intercept_opts = [True, False]
@@ -318,6 +369,7 @@ model_type = 'linear'
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
         if s is True:
@@ -333,17 +385,24 @@ if model_type in models_to_build:
             regressor.fit(X_train_temp, y_train)
             y_pred = regressor.predict(X_test_temp)
 
-            results = [{'model': model_type, 'hyper-parameters': [f, s]
-                        , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                        , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                        , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                        , 'r2': metrics.r2_score(y_test, y_pred)
-                        , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+            results = {'model': model_type, 'hyper-parameters': [f, s]
+                        , 'mae': mean_absolute_error(y_test, y_pred)
+                        , 'mse': mean_squared_error(y_test, y_pred)
+                        , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                        , 'r2': r2_score(y_test, y_pred)
+                        , 'explained_variance': explained_variance_score(y_test, y_pred)
                         , 'timestamp': str(datetime.datetime.now())
-                        }]
+                       }
 
-            df = pd.DataFrame(results, columns=results_header)
+            df = pd.DataFrame([results], columns=results_header)
             append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+            if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 
 model_type = 'ada_boost'
@@ -353,6 +412,7 @@ min_samples_leaf_opts = [1, 5, 10]
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
+    best_in_class = []
 
     for s in scaling_opts:
 
@@ -374,71 +434,35 @@ if model_type in models_to_build:
                         regressor.fit(X_train_temp, y_train)
                         y_pred = regressor.predict(X_test_temp)
 
-                        results = [{'model': model_type, 'hyper-parameters': [ne, l, lr, s]
-                                    , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                    , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                    , 'r2': metrics.r2_score(y_test, y_pred)
-                                    , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                        results = {'model': model_type, 'hyper-parameters': [ne, l, lr, s, ms]
+                                    , 'mae': mean_absolute_error(y_test, y_pred)
+                                    , 'mse': mean_squared_error(y_test, y_pred)
+                                    , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                    , 'r2': r2_score(y_test, y_pred)
+                                    , 'explained_variance': explained_variance_score(y_test, y_pred)
                                     , 'timestamp': str(datetime.datetime.now())
-                                    }]
+                                   }
 
-                        append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
+                        append_df_to_csv(pd.DataFrame([results], columns=results_header), all_results_filename, sep=',',
                                          header=results_header)
 
+                        if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                            best_in_class = results
 
-model_type = 'logistic_regression'
-penalties = ['l1', 'l2']
-gamma_opts = [0.1, 1, 10]
-intercept_opts = [True, False]
-
-if model_type in models_to_build:
-
-    print('Building ' + model_type + ' models')
-    results = []
-
-    for s in scaling_opts:
-        if s is True:
-            X_train_temp = X_train_scale
-            X_test_temp = X_test_scale
-        else:
-            X_train_temp = X_train
-            X_test_temp = X_test
-
-        for p in penalties:
-            for g in gamma_opts:
-                for i in intercept_opts:
-
-                    regressor = LogisticRegression(C=g, class_weight=None, dual=False, fit_intercept=i
-                                                   , intercept_scaling=1, max_iter=20, multi_class='ovr', n_jobs=3
-                                                   , penalty=p, solver='liblinear', tol=0.0001)
-
-                    regressor.fit(X_train_temp, y_train)
-                    y_pred = regressor.predict(X_test_temp)
-
-                    results = [{'model': model_type, 'hyper-parameters': [p, g, i, s]
-                                   , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                                   , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                                   , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                                   , 'r2': metrics.r2_score(y_test, y_pred)
-                                   , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
-                                   , 'timestamp': str(datetime.datetime.now())
-                                }]
-
-                    append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
-                                     header=results_header)
-
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 model_type = 'mpl'
 solvers = ['adam', 'lbfgs', 'sgd']
 gamma_opts = [0.1, 1, 10]
-activation_opts = ['identity', 'relu'] # 'logistic’, ‘tanh’,
+activation_opts = ['identity', 'relu']  # 'logistic’, ‘tanh’,
 
 
 if model_type in models_to_build:
 
     print('Building ' + model_type + ' models')
-    results = []
+    best_in_class = []
 
     for s in scaling_opts:
         if s is True:
@@ -457,16 +481,23 @@ if model_type in models_to_build:
                     regressor.fit(X_train_temp, y_train)
                     y_pred = regressor.predict(X_test_temp)
 
-                    results = [{'model': model_type, 'hyper-parameters': [a, sv, s]
-                               , 'mae': metrics.mean_absolute_error(y_test, y_pred)
-                               , 'mse': metrics.mean_squared_error(y_test, y_pred)
-                               , 'rmse': np.sqrt(metrics.mean_squared_error(y_test, y_pred))
-                               , 'r2': metrics.r2_score(y_test, y_pred)
-                               , 'explained_variance': metrics.explained_variance_score(y_test, y_pred)
+                    results = {'model': model_type, 'hyper-parameters': [a, sv, act, s]
+                               , 'mae': mean_absolute_error(y_test, y_pred)
+                               , 'mse': mean_squared_error(y_test, y_pred)
+                               , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                               , 'r2': r2_score(y_test, y_pred)
+                               , 'explained_variance': explained_variance_score(y_test, y_pred)
                                , 'timestamp': str(datetime.datetime.now())
-                                }]
+                                }
 
-                    append_df_to_csv(pd.DataFrame(results, columns=results_header), all_results_filename, sep=',',
+                    append_df_to_csv(pd.DataFrame([results], columns=results_header), all_results_filename, sep=',',
                                      header=results_header)
+
+                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                        best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
+                     best_results_filename, sep=',',
+                     header=results_header)
 
 print('All finished')

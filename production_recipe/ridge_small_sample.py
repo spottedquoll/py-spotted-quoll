@@ -70,4 +70,4 @@ for i in range(5):
                           + ', rmse: ' + str(np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
                           + ', r2: ' + str(metrics.r2_score(y_test, y_pred))
                           + ', opts: ' + mixed_list_to_string([i, k, g, a, s], ',')
-                          )
+                         )
