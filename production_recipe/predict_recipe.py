@@ -511,12 +511,12 @@ if model_type in models_to_build:
                      header=results_header)
 
 # k nearest neighbors
-n_neighbors_opts = [2, 5]
+n_neighbors_opts = [5, 10]  # 2,
 weights_opts = ['distance']  # 'uniform',
 algorithm_opts = ['auto']  # , 'kd_tree' , 'ball_tree'
-metric_opts = ['cosine', 'jaccard', 'euclidean']
-folds = [6, 10]
-sample_fraction_opts = [1/5, 1/10]
+metric_opts = ['cosine', 'jaccard', 'minkowski', 'euclidean']  # , 'euclidean'
+folds = [3, 6, 10]
+sample_fraction_opts = [1/10, 1/5, 1/4, 1/3]
 
 model_type = 'k_nearest_neighbors_bagged'
 if model_type in models_to_build:
@@ -527,7 +527,7 @@ if model_type in models_to_build:
     training_cols = list(df2.columns)
     del training_cols[0]
 
-    # Post scaling, region y to X, to enable sampling
+    # Post scaling, rejoin y to X to enable sampling
     train_scaled_df = pd.concat(
         [pd.DataFrame(y_train, columns=['a']), pd.DataFrame(X_train_scale, columns=training_cols)]
         , axis=1)

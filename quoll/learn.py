@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error
 
 
 def ensemble_predict(sub_models, x_test):
@@ -7,7 +7,8 @@ def ensemble_predict(sub_models, x_test):
     weights = []
     for estimator in sub_models:
         regressor = estimator['model']
-        prediction_array.append(regressor.predict(x_test))
+        y_pred = regressor.predict(x_test)
+        prediction_array.append(y_pred)
         weights.append(1 / estimator['rmse'])
 
     normal_weights = weights / sum(weights)
@@ -30,9 +31,10 @@ def bag_ensemble(regressor, training_df, x_test, y_test, y_col_name='y', folds=5
         # Predict
         regressor.fit(x_train_sample, y_train_sample)
         y_pred = regressor.predict(x_test)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
         # Store model meta
-        meta = {'fold': i, 'model': regressor, 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))}
+        meta = {'fold': i, 'model': regressor, 'rmse': rmse}
         sub_models.append(meta)
 
     return sub_models

@@ -41,7 +41,7 @@ X_test_scale = scaler.transform(X_test)
 # Build models
 
 # Decision tree
-model_type = 'decision_tree'
+model_type = 'Decision tree'
 print('Building ' + model_type + ' model')
 regressor = DecisionTreeRegressor(max_depth=None, min_samples_leaf=1, max_features='auto'
                                   , splitter='best', criterion='mse', min_samples_split=5)
@@ -55,7 +55,7 @@ series_labels.append(model_type)
 predictions.append(y_pred)
 
 # random forest
-model_type = 'random_forest'
+model_type = 'Random forest'
 print('Building ' + model_type + ' model')
 
 regressor = RandomForestRegressor(max_depth=None, min_samples_leaf=1, max_features='auto'
@@ -69,7 +69,7 @@ series_labels.append(model_type)
 predictions.append(y_pred)
 
 # ada boost
-model_type = 'ada_boost'
+model_type = 'Ada boost'
 print('Building ' + model_type + ' model')
 
 regressor = AdaBoostRegressor(DecisionTreeRegressor(max_depth=None, splitter='best'
@@ -85,7 +85,7 @@ series_labels.append(model_type)
 predictions.append(y_pred)
 
 # gradient boost
-model_type = 'gradient_boost'
+model_type = 'Gradient_boost'
 print('Building ' + model_type + ' model')
 
 regressor = GradientBoostingRegressor(n_estimators=250, loss='ls', learning_rate=1, max_features='auto',
@@ -100,7 +100,7 @@ series_labels.append(model_type)
 predictions.append(y_pred)
 
 # MPL
-model_type = 'mpl'
+model_type = 'MPL'
 print('Building ' + model_type + ' model')
 
 regressor = MLPRegressor(alpha=1e-5, solver='adam', activation='relu'

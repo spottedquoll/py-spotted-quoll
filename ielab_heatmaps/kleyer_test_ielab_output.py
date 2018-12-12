@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pylab as plt
 import matplotlib.colors as colors
 
-work_directory = '/Users/jacobfry/Desktop/Projects/uni_projects/kleyer_test/'
+work_directory = '/Volumes/slim/2018_ielab_test_heatmaps/'
 
 # harry's table
 filename = work_directory + 'table_441.h5'
