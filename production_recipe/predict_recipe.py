@@ -14,7 +14,7 @@ from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from quoll.utils import append_df_to_csv
 from production_recipe.helpers import get_recipe_df, perform_cleaning
-
+from quoll.learn import bag_ensemble, ensemble_predict
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
@@ -44,11 +44,10 @@ X_train_scale = scaler.fit_transform(X_train)
 X_test_scale = scaler.transform(X_test)
 
 # Models to run
-models_to_build = ['mpl']
+models_to_build = ['k_nearest_neighbors_bagged']
 
-# 'decision_tree', ,
-#, 'ridge_regression', 'linear', 'decision_tree', 'random_forest', 'gradient_boost'
-#              , 'ada_boost']
+# 'decision_tree', 'gradient_boost', 'mpl', 'ada_boost'
+# 'ridge_regression', 'linear', 'decision_tree', 'random_forest',
 # , 'svr'
 # 'k_nearest_neighbors' takes a long time to compute
 # 'kernel_ridge_regression' uses too much memory, (run on a subset?)
@@ -216,13 +215,13 @@ if model_type in models_to_build:
                         y_pred = regressor.predict(X_test_temp)
 
                         results = {'model': model_type, 'hyper-parameters': [n, w, a, s]
-                                    , 'mae': mean_absolute_error(y_test, y_pred)
-                                    , 'mse': mean_squared_error(y_test, y_pred)
-                                    , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
-                                    , 'r2': r2_score(y_test, y_pred)
-                                    , 'explained_variance': explained_variance_score(y_test, y_pred)
-                                    , 'timestamp': str(datetime.datetime.now())
-                                     }
+                                   , 'mae': mean_absolute_error(y_test, y_pred)
+                                   , 'mse': mean_squared_error(y_test, y_pred)
+                                   , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                   , 'r2': r2_score(y_test, y_pred)
+                                   , 'explained_variance': explained_variance_score(y_test, y_pred)
+                                   , 'timestamp': str(datetime.datetime.now())
+                                   }
 
                         df = pd.DataFrame([results], columns=results_header)
                         append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
@@ -282,9 +281,12 @@ if model_type in models_to_build:
 
 
 # Gradient boost regression
-loss_opts = ['ls', 'huber']  # 'lad'
-learning_rate_opts = [0.01, 0.1, 0.5, 1]
-n_estimators_options = [100, 150, 200]
+loss_opts = ['ls']  # 'lad', 'huber'
+learning_rate_opts = [0.1, 0.5, 1]  # 0.01, 0.1,
+n_estimators_options = [200, 225]  # 100, 150,
+min_samples_leaf_options = [1, 5]  # , 10
+min_samples_split_opts = [2, 5] # , 10
+max_features_options = ['auto', 'sqrt']
 
 model_type = 'gradient_boost'
 if model_type in models_to_build:
@@ -299,25 +301,29 @@ if model_type in models_to_build:
         for l in loss_opts:
             for lr in learning_rate_opts:
                 for mf in max_features_options:
-                    regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr
-                                                          , max_features=mf)
-                    regressor.fit(X_train_temp, y_train)
-                    y_pred = regressor.predict(X_test_temp)
+                    for ms in min_samples_leaf_options:
+                        for mss in min_samples_split_opts:
 
-                    results = {'model': model_type, 'hyper-parameters': [ne, l, lr, mf]
-                                , 'mae': mean_absolute_error(y_test, y_pred)
-                                , 'mse': mean_squared_error(y_test, y_pred)
-                                , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
-                                , 'r2': r2_score(y_test, y_pred)
-                                , 'explained_variance': explained_variance_score(y_test, y_pred)
-                                , 'timestamp': str(datetime.datetime.now())
-                               }
+                            regressor = GradientBoostingRegressor(n_estimators=ne, loss=l, learning_rate=lr
+                                                                  , max_features=mf, min_samples_leaf=ms
+                                                                  , min_samples_split=mss)
+                            regressor.fit(X_train_temp, y_train)
+                            y_pred = regressor.predict(X_test_temp)
 
-                    df = pd.DataFrame([results], columns=results_header)
-                    append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+                            results = {'model': model_type, 'hyper-parameters': [ne, l, lr, mf, ms, mss]
+                                       , 'mae': mean_absolute_error(y_test, y_pred)
+                                       , 'mse': mean_squared_error(y_test, y_pred)
+                                       , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                       , 'r2': r2_score(y_test, y_pred)
+                                       , 'explained_variance': explained_variance_score(y_test, y_pred)
+                                       , 'timestamp': str(datetime.datetime.now())
+                                       }
 
-                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
-                        best_in_class = results
+                            df = pd.DataFrame([results], columns=results_header)
+                            append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                            if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                                best_in_class = results
 
     append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
                      best_results_filename, sep=',',
@@ -454,10 +460,11 @@ if model_type in models_to_build:
                      header=results_header)
 
 model_type = 'mpl'
-solvers = ['adam', 'lbfgs', 'sgd']
-gamma_opts = [0.1, 1, 10]
-activation_opts = ['identity', 'relu']  # 'logistic’, ‘tanh’,
-
+solvers = ['adam']  # , 'lbfgs', 'sgd'
+alpha_opts = [1e-6, 1e-5, 1e-4]  # [1e-4, 1e-3, 1e-2, 1, 5, 10]
+activation_opts = ['relu']  # 'identity' , 'logistic', 'tanh'
+layers = [(df2.shape[1],) * 5, (round(df2.shape[1]*1.5),) * 5, (df2.shape[1],) * 6]  # (df2.shape[1],) * 3,
+learning_rate_opts = ['adaptive']  # 'constant', 'invscaling',
 
 if model_type in models_to_build:
 
@@ -475,29 +482,87 @@ if model_type in models_to_build:
         for a in alpha_opts:
             for sv in solvers:
                 for act in activation_opts:
+                    for h in layers:
+                        for lr in learning_rate_opts:
 
-                    regressor = MLPRegressor(alpha=a, solver=sv, activation=act)
+                            regressor = MLPRegressor(alpha=a, solver=sv, activation=act, hidden_layer_sizes=h
+                                                     , learning_rate=lr)
 
-                    regressor.fit(X_train_temp, y_train)
-                    y_pred = regressor.predict(X_test_temp)
+                            regressor.fit(X_train_temp, y_train)
+                            y_pred = regressor.predict(X_test_temp)
 
-                    results = {'model': model_type, 'hyper-parameters': [a, sv, act, s]
-                               , 'mae': mean_absolute_error(y_test, y_pred)
-                               , 'mse': mean_squared_error(y_test, y_pred)
-                               , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
-                               , 'r2': r2_score(y_test, y_pred)
-                               , 'explained_variance': explained_variance_score(y_test, y_pred)
-                               , 'timestamp': str(datetime.datetime.now())
-                                }
+                            results = {'model': model_type, 'hyper-parameters': [a, sv, act, h, lr, s]
+                                       , 'mae': mean_absolute_error(y_test, y_pred)
+                                       , 'mse': mean_squared_error(y_test, y_pred)
+                                       , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                       , 'r2': r2_score(y_test, y_pred)
+                                       , 'explained_variance': explained_variance_score(y_test, y_pred)
+                                       , 'timestamp': str(datetime.datetime.now())
+                                       }
 
-                    append_df_to_csv(pd.DataFrame([results], columns=results_header), all_results_filename, sep=',',
-                                     header=results_header)
+                            append_df_to_csv(pd.DataFrame([results], columns=results_header), all_results_filename, sep=',',
+                                             header=results_header)
 
-                    if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
-                        best_in_class = results
+                            if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                                best_in_class = results
 
     append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header),
                      best_results_filename, sep=',',
                      header=results_header)
+
+# k nearest neighbors
+n_neighbors_opts = [2, 5]
+weights_opts = ['distance']  # 'uniform',
+algorithm_opts = ['auto']  # , 'kd_tree' , 'ball_tree'
+metric_opts = ['cosine', 'jaccard', 'euclidean']
+folds = [6, 10]
+sample_fraction_opts = [1/5, 1/10]
+
+model_type = 'k_nearest_neighbors_bagged'
+if model_type in models_to_build:
+
+    print('Building ' + model_type + ' models')
+    best_in_class = []
+
+    training_cols = list(df2.columns)
+    del training_cols[0]
+
+    # Post scaling, region y to X, to enable sampling
+    train_scaled_df = pd.concat(
+        [pd.DataFrame(y_train, columns=['a']), pd.DataFrame(X_train_scale, columns=training_cols)]
+        , axis=1)
+    X_test_temp = X_test_scale
+
+    for n in n_neighbors_opts:
+        for w in weights_opts:
+            for a in algorithm_opts:
+                for f in folds:
+                    for fraction in sample_fraction_opts:
+                        for m in metric_opts:
+
+                            regressor = KNeighborsRegressor(n_neighbors=n, weights=w, algorithm=a, metric=m)
+
+                            sub_models = bag_ensemble(regressor, train_scaled_df, X_test_temp, y_test
+                                                      , y_col_name='a', folds=f, sample_fraction=fraction)
+
+                            y_pred = ensemble_predict(sub_models, X_test_temp)
+
+                            results = {'model': model_type, 'hyper-parameters': [n, w, a, f, fraction, m]
+                                       , 'mae': mean_absolute_error(y_test, y_pred)
+                                       , 'mse': mean_squared_error(y_test, y_pred)
+                                       , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+                                       , 'r2': r2_score(y_test, y_pred)
+                                       , 'explained_variance': explained_variance_score(y_test, y_pred)
+                                       , 'timestamp': str(datetime.datetime.now())
+                                       }
+
+                            df = pd.DataFrame([results], columns=results_header)
+                            append_df_to_csv(df, all_results_filename, sep=',', header=results_header)
+
+                            if best_in_class == [] or best_in_class['rmse'] > results['rmse']:
+                                best_in_class = results
+
+    append_df_to_csv(pd.DataFrame([best_in_class], columns=results_header), best_results_filename, sep=','
+                     , header=results_header)
 
 print('All finished')

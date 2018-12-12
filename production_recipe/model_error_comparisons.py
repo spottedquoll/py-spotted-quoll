@@ -18,6 +18,7 @@ df, header, year_labels = get_recipe_df(dataset_dir, 25)
 
 df = perform_cleaning(df)
 
+predictions = []
 errors = []
 absolute_errors = []
 series_labels = []
@@ -51,6 +52,7 @@ y_pred = regressor.predict(X_test)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
+predictions.append(y_pred)
 
 # random forest
 model_type = 'random_forest'
@@ -64,11 +66,7 @@ y_pred = regressor.predict(X_test)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
-
-print('model: ' + model_type + ', mae: ' + str(mean_absolute_error(y_test, y_pred))
-      + ', rmse: ' + str(np.sqrt(mean_squared_error(y_test, y_pred)))
-      + ', r2: ' + str(r2_score(y_test, y_pred))
-      )
+predictions.append(y_pred)
 
 # ada boost
 model_type = 'ada_boost'
@@ -84,12 +82,14 @@ y_pred = regressor.predict(X_test)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
+predictions.append(y_pred)
 
 # gradient boost
 model_type = 'gradient_boost'
 print('Building ' + model_type + ' model')
 
-regressor = GradientBoostingRegressor(n_estimators=200, loss='ls', learning_rate=1, max_features='auto')
+regressor = GradientBoostingRegressor(n_estimators=250, loss='ls', learning_rate=1, max_features='auto',
+                                      min_samples_leaf=5, min_samples_split=2)
 
 regressor.fit(X_train, y_train)
 y_pred = regressor.predict(X_test)
@@ -97,12 +97,14 @@ y_pred = regressor.predict(X_test)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
+predictions.append(y_pred)
 
 # MPL
 model_type = 'mpl'
 print('Building ' + model_type + ' model')
 
-regressor = MLPRegressor(alpha=0.001, solver='adam', activation='relu')
+regressor = MLPRegressor(alpha=1e-5, solver='adam', activation='relu'
+                         , hidden_layer_sizes=(round(df2.shape[1]*1.5),) * 5, learning_rate='adaptive')
 
 regressor.fit(X_train_scale, y_train)
 y_pred = regressor.predict(X_test_scale)
@@ -110,6 +112,7 @@ y_pred = regressor.predict(X_test_scale)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
+predictions.append(y_pred)
 
 # Ridge
 model_type = 'ridge'
@@ -123,6 +126,7 @@ y_pred = regressor.predict(X_test_scale)
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
+predictions.append(y_pred)
 
 # filter
 abs_errors_filt = []
@@ -172,8 +176,37 @@ plt.clf()
 
 # scatter
 fig = plt.figure()
-for idx, val in enumerate(ints):
+for idx, y_pred in enumerate(predictions):
 
-    plt.subplot(2, 3, idx)
-    plt.savefig(results_dir + 'prediction_error_boxplots.png', dpi=700, bbox_inches='tight')
-    plt.clf()
+    plt.subplot(2, 3, idx+1)
+    plt.scatter(y_test, y_pred, s=5, c='black')
+    plt.ylim(0, 1)
+    plt.xlim(0, 1)
+
+    plt.xlabel('Aij (actual)', fontsize=8, labelpad=8)
+    plt.ylabel('Aij (predicted)', fontsize=8, labelpad=8)
+    plt.xticks(fontsize=8)
+    plt.yticks(fontsize=8)
+    plt.gca().set_aspect('equal', adjustable='box')
+
+    plt.title(series_labels[idx], fontsize=8)
+
+plt.tight_layout(pad=0.75, w_pad=1.5, h_pad=0.3)
+plt.savefig(results_dir + 'prediction_correlation_scatter.png', dpi=700, bbox_inches='tight')
+plt.clf()
+
+# Make table
+table = []
+for idx, y_pred in enumerate(predictions):
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+
+    results = {'model': series_labels[idx], 'mae': mean_absolute_error(y_test, y_pred)
+               , 'mse': mean_squared_error(y_test, y_pred)
+               , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
+               , 'r2': r2_score(y_test, y_pred)
+               }
+    table.append(results)
+
+header = ['model', 'mae', 'rmse', 'r2']
+df = pd.DataFrame(table, columns=header)
+df.to_csv(results_dir + 'best_models_summary_table.csv', sep=',', header=header)
