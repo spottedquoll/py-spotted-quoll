@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.linear_model import Ridge
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import train_test_split
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from quoll.learn import bag_ensemble, ensemble_predict
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
@@ -85,7 +86,7 @@ series_labels.append(model_type)
 predictions.append(y_pred)
 
 # gradient boost
-model_type = 'Gradient_boost'
+model_type = 'Gradient boost'
 print('Building ' + model_type + ' model')
 
 regressor = GradientBoostingRegressor(n_estimators=250, loss='ls', learning_rate=1, max_features='auto',
@@ -114,14 +115,25 @@ absolute_errors.append(abs(y_test - y_pred))
 series_labels.append(model_type)
 predictions.append(y_pred)
 
-# Ridge
-model_type = 'ridge'
+# KNN
+model_type = 'KNN'
 print('Building ' + model_type + ' model')
 
-regressor = Ridge(alpha=20, normalize=False, fit_intercept=True)
+# Post scaling, rejoin y to X to enable sampling
+training_cols = list(df2.columns)
+del training_cols[0]
 
-regressor.fit(X_train_scale, y_train)
-y_pred = regressor.predict(X_test_scale)
+train_scaled_df = pd.concat(
+    [pd.DataFrame(y_train, columns=['a']), pd.DataFrame(X_train_scale, columns=training_cols)]
+    , axis=1)
+X_test_temp = X_test_scale
+
+regressor = KNeighborsRegressor(n_neighbors=3, weights='distance', algorithm='auto', metric='cosine')
+
+sub_models = bag_ensemble(regressor, train_scaled_df, X_test_temp, y_test
+                          , y_col_name='a', folds=20, sample_fraction=0.2)
+
+y_pred = ensemble_predict(sub_models, X_test_temp)
 
 errors.append(y_test - y_pred)
 absolute_errors.append(abs(y_test - y_pred))

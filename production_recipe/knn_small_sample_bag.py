@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, KBinsDiscretizer
 from sklearn.neighbors import KNeighborsRegressor
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 from quoll.utils import append_df_to_csv
@@ -30,23 +30,33 @@ X = np.array(df2.drop('a', axis=1))
 # Split training and validation sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)
 
-# Scale the continuous data
-scaler = MinMaxScaler()
-X_train_scale = scaler.fit_transform(X_train)
-X_test_scale = scaler.transform(X_test)
+scale = 'discrete'
 
+# Scale the continuous data
+if scale is 'minmax':
+    scaler = MinMaxScaler()
+    X_train_scale = scaler.fit_transform(X_train)
+    X_test_scale = scaler.transform(X_test)
+elif scale is 'discrete':
+    scaler = KBinsDiscretizer(n_bins=10, encode='onehot-dense')
+    X_train_scale = scaler.fit_transform(X_train)
+    X_test_scale = scaler.transform(X_test)
+elif scale is None:
+    X_train_scale = X_train
+    X_test_scale = X_test
+
+# Column names
 training_cols = list(df2.columns)
 del training_cols[0]
 
 # Post scaling, region y to X, to enable sampling
-train_scaled_df = pd.concat([pd.DataFrame(y_train, columns=['a']), pd.DataFrame(X_train_scale, columns=training_cols)]
-                            , axis=1)
+train_scaled_df = pd.concat([pd.DataFrame(y_train, columns=['a']), pd.DataFrame(X_train_scale)], axis=1)  # , columns=training_cols)
 
 model_type = 'k_nearest_neighbors_bagged'
 
 # Fold settings
-n = 10
-f = 25
+n = 5
+f = 15
 fraction = 0.1
 m = 'cosine'
 w = 'distance'
@@ -75,7 +85,6 @@ for i in range(f):
 
     print('.')
 
-# Calculate ensemble prediction
 print('Calculating ensemble prediction...')
 
 prediction_array = []
@@ -106,7 +115,7 @@ print('mae: ' + str(mean_absolute_error(y_test, y_pred))
       )
 
 # Save results
-results = {'model': model_type, 'hyper-parameters': [n, w, a, f, fraction, m]
+results = {'model': model_type, 'hyper-parameters': [n, w, a, f, fraction, m, scale]
            , 'mae': mean_absolute_error(y_test, y_pred)
            , 'mse': mean_squared_error(y_test, y_pred)
            , 'rmse': np.sqrt(mean_squared_error(y_test, y_pred))
