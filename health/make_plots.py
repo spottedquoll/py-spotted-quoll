@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from quoll.draw import discrete_cmap
+import numpy as np
 
 print('making plots...')
 
@@ -13,10 +13,45 @@ df1 = xl.parse('Fig1Data')
 data = df1['CarbonF'].values
 labels = df1['Category'].values
 
+cmap = plt.get_cmap('tab20c')
+colors = [cmap(i) for i in np.linspace(0, 1, len(data))]
+
 plt.figure()
-plt.pie(data, labels=labels)
-plt.savefig(work_dir + 'figs/fig1_pie.png', dpi=700)
+ax = plt.subplot(111)
+
+plt.pie(data, colors=colors)
+ax.legend(labels=labels, loc='upper center', bbox_to_anchor=(0.5, -0.1), frameon=False, ncol=2)
+
+plt.savefig(work_dir + 'figs/fig1_pie.png', dpi=700, bbox_inches='tight')
+plt.savefig(work_dir + 'figs/fig1_pie.pdf', bbox_inches='tight')
+
 plt.clf()
+
+# figure 1a
+df1 = xl.parse('Fig1Data')
+sub_categories = df1['OuterLabel'].unique().tolist()
+
+for idx, cat in enumerate(sub_categories):
+
+    selection = df1[df1['OuterLabel'] == cat]
+
+    data = selection['CarbonF'].values
+    labels = selection['Category'].values
+
+    cmap = plt.get_cmap('tab20')
+    colors = [cmap(i) for i in np.linspace(0, 1, len(data))]
+
+    plt.figure()
+    ax = plt.subplot(111)
+
+    plt.pie(data, colors=colors)
+    ax.legend(labels=labels, loc='upper center', bbox_to_anchor=(0.5, 0), frameon=False, ncol=2)
+    plt.title(cat)
+
+    plt.savefig(work_dir + 'figs/fig1.' + str(idx) + '_pie.png', dpi=700, bbox_inches='tight')
+    plt.savefig(work_dir + 'figs/fig1.' + str(idx) + '_pie.pdf', bbox_inches='tight')
+
+    plt.clf()
 
 # figure 2
 df1 = xl.parse('Fig2Data')
