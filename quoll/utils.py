@@ -47,3 +47,7 @@ def mixed_list_to_string(llist, delimiter):
             final_str = final_str + d + item
 
     return final_str
+
+
+def flatten_list(list_of_lists):
+    return [item for sublist in list_of_lists for item in sublist]

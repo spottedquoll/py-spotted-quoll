@@ -1,10 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from quoll.utils import flatten_list
 
 print('making plots...')
 
-work_dir = '/Volumes/slim/Projects/uni_projects/japan_health/'
+work_dir = '/Volumes/slim/more_projects/japan_health/'
 file = work_dir + 'FigureData.xlsx'
 xl = pd.ExcelFile(file)
 
@@ -25,7 +26,7 @@ ax.legend(labels=labels, loc='upper center', bbox_to_anchor=(0.5, -0.1), frameon
 plt.savefig(work_dir + 'figs/fig1_pie.png', dpi=700, bbox_inches='tight')
 plt.savefig(work_dir + 'figs/fig1_pie.pdf', bbox_inches='tight')
 
-plt.clf()
+plt.close()
 
 # figure 1a
 df1 = xl.parse('Fig1Data')
@@ -52,6 +53,123 @@ for idx, cat in enumerate(sub_categories):
     plt.savefig(work_dir + 'figs/fig1.' + str(idx) + '_pie.pdf', bbox_inches='tight')
 
     plt.clf()
+
+plt.close()
+
+# figure 1b (nested pie)
+df1 = xl.parse('Fig1bData')
+
+#   group categories
+group_names = df1['NewOuterLabel'].unique().tolist()
+group_size = []
+for g in group_names:
+    selection = df1[df1['NewOuterLabel'] == g]
+    total = selection['CarbonF'].values.sum()
+    group_size.append(total)
+
+subgroup_names = df1['Label'].tolist()
+subgroup_size = df1['CarbonF'].values
+
+#   Pie settings
+outside_radius = 1.0+(1/3)
+inner_radius = (2/3)*outside_radius
+explode_offset = 0
+explode_inner = []
+explode_outer = []
+
+for i in range(len(subgroup_names)):
+    explode_inner.append(explode_offset/2)
+
+for i in range(len(group_names)):
+    explode_outer.append(explode_offset)
+
+#   outer ring
+fig, ax = plt.subplots()
+ax.axis('equal')
+mypie, _ = ax.pie(group_size, radius=outside_radius, labels=group_names, textprops={'fontsize': 10}
+                  , explode=explode_outer)
+plt.setp(mypie, width=outside_radius/3, edgecolor='white')
+
+#   inner ring
+mypie2, _ = ax.pie(subgroup_size, radius=inner_radius, labels=subgroup_names, labeldistance=0.8
+                   , explode=explode_inner, textprops={'fontsize': 8})
+plt.setp(mypie2, width=inner_radius/2, edgecolor='white')
+
+plt.savefig(work_dir + 'figs/fig1_nested_pie.png', dpi=700, bbox_inches='tight')
+plt.close()
+
+
+# figure (nested pie 2) (flip rings around)
+df1 = xl.parse('Fig1cData')
+
+#   group categories
+group_names = df1['NewOuterLabel'].unique().tolist()
+group_size = []
+for g in group_names:
+    selection = df1[df1['NewOuterLabel'] == g]
+    total = selection['CarbonF'].values.sum()
+    group_size.append(total)
+
+subgroup_names = df1['Label'].tolist()
+subgroup_size = df1['CarbonF'].values
+
+#   Pie settings
+outside_radius = 1.0+(1/3)
+inner_radius = (2/3)*outside_radius
+inner_ring_width = inner_radius/2
+outer_ring_width = outside_radius/3
+
+# colour maps
+colour_maps = ['Reds', 'Purples', 'Blues', 'Wistia', 'Oranges', 'Greens']
+assert len(group_names) <= len(colour_maps), 'Not enough colour maps'
+
+discrete_inner_colours = []
+discrete_outer_colours = []
+for idx, g in enumerate(group_names):
+    selection = df1[df1['NewOuterLabel'] == g]
+    cmap = plt.get_cmap(colour_maps[idx])
+    discrete_colors = [cmap(i) for i in np.linspace(0, 1, len(selection)+3)]
+    reverse_colors = discrete_colors[::-1]
+    a = reverse_colors[1]
+    b = reverse_colors[2:-1]
+    discrete_inner_colours.append(a)
+    discrete_outer_colours.append(b)
+
+discrete_outer_colours = flatten_list(discrete_outer_colours)
+
+# create figure
+fig, ax = plt.subplots()
+ax.axis('equal')
+
+#   outer ring
+outer_wedges, _ = ax.pie(subgroup_size, radius=outside_radius, colors=discrete_outer_colours)
+
+#   inner wedges
+inner_wedges, texts = ax.pie(group_size, radius=inner_radius, textprops={'fontsize': 10}
+                             , colors=discrete_inner_colours)  # , labels=group_names
+plt.setp(inner_wedges, width=inner_ring_width, edgecolor='white')
+
+#   label outer wedges
+bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+kw = dict(xycoords='data', textcoords='data', arrowprops=dict(arrowstyle="-"), zorder=0, va="center")
+
+for i, p in enumerate(outer_wedges):
+    ang = (p.theta2 - p.theta1)/2. + p.theta1
+    y = np.sin(np.deg2rad(ang))
+    x = np.cos(np.deg2rad(ang))
+    horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+    connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+    kw["arrowprops"].update({"connectionstyle": connectionstyle})
+    ax.annotate(subgroup_names[i], xy=(x, y), xytext=(1.6*np.sign(x), 1.6*y), horizontalalignment=horizontalalignment
+                , **kw)
+
+plt.setp(outer_wedges, width=outer_ring_width, edgecolor='white')
+
+# Legend for inner ring
+plt.legend(inner_wedges, group_names, loc='upper center', bbox_to_anchor=(0.5, 1.25), frameon=False, ncol=3)
+
+plt.savefig(work_dir + 'figs/fig1_nested_pie_3.png', dpi=400, bbox_inches='tight')
+plt.close()
 
 # figure 2
 df1 = xl.parse('Fig2Data')
