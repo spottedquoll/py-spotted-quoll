@@ -51,3 +51,14 @@ def mixed_list_to_string(llist, delimiter):
 
 def flatten_list(list_of_lists):
     return [item for sublist in list_of_lists for item in sublist]
+
+
+def key_match_in_dicts(list_dicts, search_key, search_value):
+    matches = []
+    for a in list_dicts:
+        if search_key in a and a[search_key] == search_value:
+            matches.append(a)
+
+    return matches
+
+
