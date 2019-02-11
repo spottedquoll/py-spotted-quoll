@@ -11,8 +11,8 @@ xl = pd.ExcelFile(file)
 
 # settings
 plot_1 = True
-plot_2 = False
-plot_3 = False
+plot_2 = True
+plot_3 = True
 plot_4 = True
 
 if plot_1:
@@ -188,12 +188,14 @@ if plot_2:
     df1 = xl.parse('Fig2Data')
     df_tr = df1.transpose()
 
-    labels = df1['Disease'].values
+    labels = df1['Disease short'].values
     series_labels = list(df1)
-    del series_labels[0]
 
-    a = df1[series_labels[0]].values
-    b = df1[series_labels[1]].values
+    series_1 = series_labels[-2]
+    series_2 = series_labels[-1]
+
+    a = df1[series_1].values
+    b = df1[series_2].values
 
     b = b + a
 
@@ -206,8 +208,8 @@ if plot_2:
     plt.figure()
     ax = plt.subplot(111)
 
-    p2 = plt.barh(x_pos, b, label=series_labels[1], color='xkcd:salmon', edgecolor='xkcd:slate grey', linewidth=0.5)
-    p1 = plt.barh(x_pos, a, label=series_labels[0], color='xkcd:dark sky blue', edgecolor='xkcd:slate grey', linewidth=0.5)
+    p2 = plt.barh(x_pos, b, label=series_2, color='xkcd:salmon', edgecolor='xkcd:slate grey', linewidth=0.5)
+    p1 = plt.barh(x_pos, a, label=series_1, color='xkcd:dark sky blue', edgecolor='xkcd:slate grey', linewidth=0.5)
 
     plt.xlabel('Total GHG emissions for medical service expenditure (kt CO$_2$-e)', labelpad=10)
     plt.yticks(x_pos, labels)
@@ -224,12 +226,14 @@ if plot_3:
     # Figure 3
     df1 = xl.parse('Fig3Data')
 
-    labels = df1['Disease'].values
+    labels = df1['Disease short'].values
     series_labels = list(df1)
-    del series_labels[0]
 
-    a = df1[series_labels[0]].values
-    b = df1[series_labels[1]].values
+    series_1 = series_labels[-2]
+    series_2 = series_labels[-1]
+
+    a = df1[series_1].values
+    b = df1[series_2].values
 
     a = a/1000
     b = b/1000
@@ -242,9 +246,9 @@ if plot_3:
     plt.figure()
     ax = plt.subplot(111)
 
-    p2 = plt.barh(x_pos, a, height=bar_width, label=series_labels[1], color='xkcd:cool green'
+    p2 = plt.barh(x_pos, a, height=bar_width, label=series_2, color='xkcd:cool green'
                   , edgecolor='xkcd:slate grey', linewidth=0.3)
-    p1 = plt.barh(x_pos_2, b, height=bar_width, label=series_labels[0], color='xkcd:lilac'
+    p1 = plt.barh(x_pos_2, b, height=bar_width, label=series_1, color='xkcd:lilac'
                   , edgecolor='xkcd:slate grey', linewidth=0.3)
 
     plt.xlabel('Total GHG emissions per patient (t CO$_2$-e/pp)', labelpad=10)
@@ -398,7 +402,7 @@ if plot_4:
         # get the color
         colour_match = key_match_in_dicts(name_colour_store, 'name', series)
         if not colour_match:
-            colour = None
+            colour = 'xkcd:cool green'
         else:
             colour = colour_match[0]['c']
 
