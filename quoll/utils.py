@@ -62,3 +62,14 @@ def key_match_in_dicts(list_dicts, search_key, search_value):
     return matches
 
 
+def get_local_volume():
+
+    if os.path.exists('/Volumes/seagate/'):
+        volume = '/Volumes/seagate/Projects_backup/'
+    elif os.path.exists('/Volumes/slim/'):
+        volume = '/Volumes/slim/'
+    else:
+        raise ValueError('No external disk found.')
+
+    return volume
+

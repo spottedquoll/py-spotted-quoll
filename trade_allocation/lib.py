@@ -12,6 +12,7 @@ import pandas
 class MplColorHelper:
 
     def __init__(self, cmap_name, min_val, max_val, normalisation='linear'):
+
         self.cmap_name = cmap_name
         self.cmap = plt.get_cmap(cmap_name)
 
@@ -103,14 +104,14 @@ def plot_qld_beef_exports(method, trade_direction, all_shapes, input_path, resul
     # plt.show()
 
     plt.savefig(results_path + 'queensland_beef_' + trade_direction + '_' + method + '_' + colour_map + '_' + scaling
-                + '.png', dpi=1400)
+                + '.png', dpi=1400, bbox_inches='tight')
     plt.clf()
     plt.close("all")
 
     print('.')
 
 
-def plot_aus_beef_exports(method, trade_direction,all_shapes, input_path, results_path, normalise=True
+def plot_aus_beef_exports(method, trade_direction, all_shapes, input_path, results_path, normalise=None
                           , colour_map='plasma'):
 
     print('Plotting Australian beef allocation weights...')
@@ -121,7 +122,7 @@ def plot_aus_beef_exports(method, trade_direction,all_shapes, input_path, result
 
     region_totals = trade_data
 
-    if normalise:
+    if normalise is None:
         region_totals = region_totals / max(region_totals)
         if max(region_totals) > 1.001:
             raise ValueError('Normalisation failed')
@@ -176,7 +177,7 @@ def plot_aus_beef_exports(method, trade_direction,all_shapes, input_path, result
     # plt.show()
 
     plt.savefig(results_path + 'aus_beef_exports_' + trade_direction + '_' + method + '_' + colour_map
-                + '_allports.png', dpi=1400)
+                + '_allports.png', dpi=1400, bbox_inches='tight')
     plt.clf()
 
     print('.')
@@ -211,10 +212,11 @@ def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input
         scaling = 'nmld'
         if sum(region_totals) > 1.001 or sum(region_totals) < 0.999:
             raise ValueError('Normalisation failed')
+
     else:
         scaling = 'raw'
 
-    colour_scaling = MplColorHelper(colour_map, np.min(region_totals), np.max(region_totals))
+    colour_scaling = MplColorHelper(colour_map, np.min(region_totals), np.max(region_totals), normalisation = 'linear')
 
     if len(trade_data) != len(qld_sa2_members):
         raise ValueError('SA2 count does not match trade data dimension')
@@ -265,8 +267,7 @@ def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input
     # plt.show()
 
     plt.savefig(results_path + 'queensland_beef_' + trade_direction + '_' + method + '_' + colour_map + '_' + scaling
-                + '_port=' + port_name + '.png'
-                , dpi=1400)
+                + '_port=' + port_name + '.png', dpi=1400, bbox_inches='tight')
     plt.clf()
     plt.close("all")
 
@@ -274,19 +275,12 @@ def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input
 
 
 def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_file_name, bounding_box
-                              , normalise=True, colour_map='plasma', attach_colorbar=False):
+                              , normalisation='linear', colour_map='plasma', attach_colorbar=False):
 
-    if normalise:
-        colour_scale_data = colour_scale_data / sum(colour_scale_data)
-        if sum(colour_scale_data) > 1.001 or sum(colour_scale_data) < 0.999:
-            raise ValueError('Normalisation failed')
-        min_val = 0
-        max_val = 1
-    else:
-        min_val = np.min(colour_scale_data)
-        max_val = np.max(colour_scale_data)
+    min_val = np.min(colour_scale_data)
+    max_val = np.max(colour_scale_data)
 
-    colour_scaling = MplColorHelper(colour_map, min_val, max_val)
+    colour_scaling = MplColorHelper(colour_map, min_val, max_val, normalisation=normalisation)
 
     if len(colour_scale_data) != len(sub_regions):
         raise ValueError('SA2 count does not match trade data dimension')
@@ -337,8 +331,39 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
     if attach_colorbar:
         plt.colorbar()
 
-    plt.savefig(save_file_name, dpi=1400)
+    plt.savefig(save_file_name, dpi=1400, bbox_inches='tight')
     plt.clf()
     plt.close("all")
 
     print('.')
+
+
+def collate_weights(allocations, input_path, trade_direction, port_locations, port_name, results_path):
+
+    all_weights = None
+
+    for z in allocations:
+
+        # Get the trade allocation
+        trade_data = genfromtxt(input_path + z + '_' + trade_direction + '_beef_domestic_flows_qld.csv',
+                                delimiter=',')
+
+        # Find the appropriate port locations
+        port_locations_pd = pandas.DataFrame(port_locations)
+        matching_ports = port_locations_pd.index[port_locations_pd['Port Name'] == port_name].tolist()
+        if len(matching_ports) == 0:
+            raise ValueError('Port could not be found')
+
+        # Squash the totals
+        a = np.array(trade_data)
+        region_totals = None
+        for m in matching_ports:
+            if region_totals is None:
+                region_totals = a[:, m]
+            else:
+                region_totals = region_totals + a[:, m]
+
+        all_weights = pandas.concat([all_weights, pandas.DataFrame(region_totals, columns=[z])], axis=1)
+
+    # Save to xlsx
+    all_weights.to_excel(results_path + 'collate_weights_' + port_name + '.xlsx', header=True, index=False)
