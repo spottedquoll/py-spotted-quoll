@@ -108,8 +108,6 @@ def plot_qld_beef_exports(method, trade_direction, all_shapes, input_path, resul
     plt.clf()
     plt.close("all")
 
-    print('.')
-
 
 def plot_aus_beef_exports(method, trade_direction, all_shapes, input_path, results_path, normalise=None
                           , colour_map='plasma'):
@@ -174,13 +172,9 @@ def plot_aus_beef_exports(method, trade_direction, all_shapes, input_path, resul
     plt.xlim(110, 155)
     plt.ylim(-45, -5)
 
-    # plt.show()
-
     plt.savefig(results_path + 'aus_beef_exports_' + trade_direction + '_' + method + '_' + colour_map
                 + '_allports.png', dpi=1400, bbox_inches='tight')
     plt.clf()
-
-    print('.')
 
 
 def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input_path, results_path, qld_sa2_members
@@ -271,8 +265,6 @@ def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input
     plt.clf()
     plt.close("all")
 
-    print('.')
-
 
 def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_file_name, bounding_box
                               , normalisation='linear', colour_map='plasma', attach_colorbar=False):
@@ -283,7 +275,7 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
     colour_scaling = MplColorHelper(colour_map, min_val, max_val, normalisation=normalisation)
 
     if len(colour_scale_data) != len(sub_regions):
-        raise ValueError('SA2 count does not match trade data dimension')
+        raise ValueError('Data dim does not match number of polygons.')
 
     count = 0
 
@@ -298,7 +290,10 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
         shape = all_shapes[int(index) - 1]
         polygon_parts = len(shape.parts)
 
-        colour_rgb = colour_scaling.get_rgb(colour_scale_data[count])
+        try:
+            colour_rgb = colour_scaling.get_rgb(colour_scale_data[count])
+        except:
+            stop = 1
         # scaled_colours = [colour_rgb[0], colour_rgb[1], colour_rgb[2]]
 
         if polygon_parts == 1:
@@ -329,13 +324,13 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
     plt.ylim(bounding_box[2], bounding_box[3])
 
     if attach_colorbar:
-        plt.colorbar()
+        sm = plt.cm.ScalarMappable(cmap=getattr(plt.cm, colour_map), norm=plt.Normalize(vmin=min_val, vmax=max_val))
+        sm._A = []
+        plt.colorbar(sm)
 
     plt.savefig(save_file_name, dpi=1400, bbox_inches='tight')
     plt.clf()
     plt.close("all")
-
-    print('.')
 
 
 def collate_weights(allocations, input_path, trade_direction, port_locations, port_name, results_path):
@@ -367,3 +362,13 @@ def collate_weights(allocations, input_path, trade_direction, port_locations, po
 
     # Save to xlsx
     all_weights.to_excel(results_path + 'collate_weights_' + port_name + '.xlsx', header=True, index=False)
+
+
+def get_port_index(port_name, port_locations):
+
+    port_locations_pd = pandas.DataFrame(port_locations)
+    matching_ports = port_locations_pd.index[port_locations_pd['Port Name'] == port_name].tolist()
+    if len(matching_ports) == 0:
+        raise ValueError('Port could not be found')
+
+    return matching_ports

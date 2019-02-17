@@ -64,10 +64,10 @@ def key_match_in_dicts(list_dicts, search_key, search_value):
 
 def get_local_volume():
 
-    if os.path.exists('/Volumes/seagate/'):
-        volume = '/Volumes/seagate/Projects_backup/'
-    elif os.path.exists('/Volumes/slim/'):
+    if os.path.exists('/Volumes/slim/'):
         volume = '/Volumes/slim/'
+    elif os.path.exists('/Volumes/seagate/'):
+        volume = '/Volumes/seagate/Projects_backup/'
     else:
         raise ValueError('No external disk found.')
 
