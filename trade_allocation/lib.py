@@ -11,10 +11,14 @@ import pandas
 
 class MplColorHelper:
 
-    def __init__(self, cmap_name, min_val, max_val, normalisation='linear'):
+    def __init__(self, cmap_name, min_val, max_val, normalisation='linear', discrete_bins=None):
 
         self.cmap_name = cmap_name
-        self.cmap = plt.get_cmap(cmap_name)
+
+        if discrete_bins is None:
+            self.cmap = plt.get_cmap(cmap_name)
+        else:
+            self.cmap = plt.get_cmap(cmap_name, discrete_bins)
 
         if normalisation is 'linear':
             self.norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
@@ -266,13 +270,14 @@ def plot_qld_beef_exports_single_port(method, trade_direction, all_shapes, input
     plt.close("all")
 
 
-def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_file_name, bounding_box
-                              , normalisation='linear', colour_map='plasma', attach_colorbar=False):
+def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_file_name, bounding_box=None
+                              , normalisation='linear', colour_map='plasma', attach_colorbar=False, discrete_bins=None):
 
     min_val = np.min(colour_scale_data)
     max_val = np.max(colour_scale_data)
 
-    colour_scaling = MplColorHelper(colour_map, min_val, max_val, normalisation=normalisation)
+    colour_scaling = MplColorHelper(colour_map, min_val, max_val, normalisation=normalisation
+                                    , discrete_bins=discrete_bins)
 
     if len(colour_scale_data) != len(sub_regions):
         raise ValueError('Data dim does not match number of polygons.')
@@ -294,7 +299,6 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
             colour_rgb = colour_scaling.get_rgb(colour_scale_data[count])
         except:
             stop = 1
-        # scaled_colours = [colour_rgb[0], colour_rgb[1], colour_rgb[2]]
 
         if polygon_parts == 1:
             polygon = Polygon(shape.points)
@@ -320,8 +324,9 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
 
         count = count + 1
 
-    plt.xlim(bounding_box[0], bounding_box[1])
-    plt.ylim(bounding_box[2], bounding_box[3])
+    if bounding_box is not None:
+        plt.xlim(bounding_box[0], bounding_box[1])
+        plt.ylim(bounding_box[2], bounding_box[3])
 
     if attach_colorbar:
         sm = plt.cm.ScalarMappable(cmap=getattr(plt.cm, colour_map), norm=plt.Normalize(vmin=min_val, vmax=max_val))

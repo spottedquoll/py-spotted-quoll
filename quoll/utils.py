@@ -1,5 +1,6 @@
 import os
 import numbers
+import numpy as np
 
 
 def append_df_to_csv(df, filename, header, sep=',', encoding='utf-8'):
@@ -73,3 +74,14 @@ def get_local_volume():
 
     return volume
 
+
+def append_array(vals, store):
+
+    if store is None:
+        store = np.array(vals)
+    elif store.ndim < 2:
+        store = np.append([store], [np.array(vals)], axis=0)
+    else:
+        store = np.append(store, [np.array(vals)], axis=0)
+
+    return store
