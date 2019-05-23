@@ -338,14 +338,14 @@ def colour_polygons_by_vector(colour_scale_data, all_shapes, sub_regions, save_f
     plt.close("all")
 
 
-def collate_weights(allocations, input_path, trade_direction, port_locations, port_name, results_path):
+def collate_weights(year, allocations, input_path, trade_direction, port_locations, port_name, results_path):
 
     all_weights = None
 
     for z in allocations:
 
         # Get the trade allocation
-        trade_data = genfromtxt(input_path + z + '_' + trade_direction + '_beef_domestic_flows_qld.csv',
+        trade_data = genfromtxt(input_path + z + '_' + trade_direction + '_beef_domestic_flows_qld_' + year + '.csv',
                                 delimiter=',')
 
         # Find the appropriate port locations

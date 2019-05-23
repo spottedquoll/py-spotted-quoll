@@ -54,6 +54,7 @@ def find_unique_label_position(x, y, existing_points, closest_allowed, perturb, 
 
         i += 1
 
+    # Return winner
     if up_dist > down_dist:
         return x_up_test, y_up_test
     else:

@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn import metrics
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 
 recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'

@@ -198,22 +198,23 @@ if plot_1:
 
         df1 = xl.parse('Fig1eData')
 
-        #   group categories
+        #   Inner group category labels
+        inner_labels = []
         group_names = df1['NewOuterLabel'].unique().tolist()
         group_size = []
         for g in group_names:
+
+            # Totals
             selection = df1[df1['NewOuterLabel'] == g]
             total = selection['CarbonF'].values.sum()
             group_size.append(total)
 
-        numbered_labels = df1['CategoryNum'].unique().tolist()
+            # labels
+            category_total = '{:.0f}'.format(df1[df1['NewOuterLabel'] == g]['CarbonF'].sum()/1000)
+            inner_labels.append(str(g) + '; ' + category_total + 'Mt')
 
         subgroup_names = df1['Label'].tolist()
         subgroup_size = df1['CarbonF'].values
-
-        legend_labels = []
-        for idx, item in enumerate(group_names):
-            legend_labels.append(str(numbered_labels[idx]) + '. ' + item)
 
         #   Pie settings
         outside_radius = 1.0+(1/3)
@@ -255,14 +256,14 @@ if plot_1:
         #   inner wedges
         inner_wedges, texts = ax.pie(group_size, radius=inner_radius
                                      , textprops={'fontsize': 10, 'color': 'w', 'weight': 'bold'}
-                                     , colors=discrete_inner_colours, labels=numbered_labels
-                                     , labeldistance=0.75*inner_radius)
+                                     , colors=discrete_inner_colours, labels=inner_labels
+                                     , labeldistance=0.6*inner_radius)
 
         #   label outer wedges
         bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
         kw = dict(xycoords='data', textcoords='data', arrowprops=dict(arrowstyle="-"), zorder=0, va="center")
         label_coords = None  # remember plotted label coordinates to avoid overlaps
-        closest_label_pos = 0.1
+        closest_label_pos = 0.13
         max_adjust_attempts = 10
 
         for i, p in enumerate(outer_wedges):
@@ -282,7 +283,11 @@ if plot_1:
             horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
             connectionstyle = "angle,angleA=0,angleB={}".format(ang)
             kw["arrowprops"].update({"connectionstyle": connectionstyle})
-            ax.annotate(subgroup_names[i], xy=(x, y), xytext=(x_txt, y_txt)
+
+            outer_label = df1[df1['Label'] == subgroup_names[i]]['NewOuterLabel'].values[0]
+            subgroup_name_label = str(outer_label) + '; ' + subgroup_names[i]
+
+            ax.annotate(subgroup_name_label, xy=(x, y), xytext=(x_txt, y_txt)
                         , horizontalalignment=horizontalalignment, **kw)
 
             label_coords = append_array([x_txt, y_txt], label_coords)
@@ -290,7 +295,7 @@ if plot_1:
         plt.setp(outer_wedges, width=outer_ring_width, edgecolor='white')
 
         # Legend for inner ring
-        plt.legend(inner_wedges, legend_labels, loc='upper center', bbox_to_anchor=(0.5, 1.25), frameon=False, ncol=4)
+        plt.legend(inner_wedges, group_names, loc='upper center', bbox_to_anchor=(0.5, 1.25), frameon=False, ncol=4)
 
         plt.savefig(work_dir + 'figs/fig_1d_nested_pie.png', dpi=400, bbox_inches='tight')
         plt.close()

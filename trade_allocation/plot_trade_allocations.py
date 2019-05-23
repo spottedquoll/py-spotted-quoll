@@ -38,83 +38,87 @@ for row in records:
 # Options
 allocations = ['production', 'gravity', 'combined']
 trade_directions = ['exports']  # 'imports',
-colour_maps = ['plasma']  # , 'Greys', 'hot', 'viridis''BuPu', 'PuRd' 'plasma_r', 'Greys', 'Greys_r',
+colour_maps = ['plasma']  # , 'Greys', 'hot', 'viridis', 'BuPu', 'PuRd' 'plasma_r', 'Greys', 'Greys_r',
 scalings = ['linear']  # , 'symlog' normalisation of figures
 aus_bounding_box = [110, 155, -45, -5]  # x_min, x_max, y_min, y_max]
 qld_bounding_box = [136, 155, -30, -8]
 colour_bar = [False]  # True,
-discrete_colours = [False, 15]
-sectors = ['meat']  #, 'beef'
-
-# extract weights for QA
-for flow in trade_directions:
-    collate_weights(allocations, input_path, flow, port_locations, 'Brisbane', results_path)
+discrete_colours = [15]  # False
+sectors = ['beef', 'meat']  # , 'beef'
+years = ['2000', '2009']  # '2005',
 
 # Plot maps
-for flow in trade_directions:
-    print('Plotting ' + flow)
+for y in years:
+    print(y)
 
-    for alloc in allocations:
-        print('.' + alloc)
+    # extract weights for QA
+    for flow in trade_directions:
+        collate_weights(y, allocations, input_path, flow, port_locations, 'Brisbane', results_path)
 
-        for scale in scalings:
-            print('..' + scale)
+    for flow in trade_directions:
+        print('Plotting ' + flow)
 
-            for c in colour_maps:
-                print('...' + c)
+        for alloc in allocations:
+            print('.' + alloc)
 
-                for cb in colour_bar:
-                    print('....cbar:' + str(cb))
+            for scale in scalings:
+                print('..' + scale)
 
-                    for dc in discrete_colours:
-                        print('.....discol:' + str(dc))
+                for c in colour_maps:
+                    print('...' + c)
 
-                        for s in sectors:
-                            print('......' + s)
+                    for cb in colour_bar:
+                        print('....cbar:' + str(cb))
 
-                            save_fname_base = (results_path + flow + '_' + alloc + '_' + scale + '_' + c
-                                               + '_cbar' + str(cb) + '_' + s + '_discol' + str(dc)).lower()
+                        for dc in discrete_colours:
+                            print('.....discol:' + str(dc))
 
-                            # Whole of Aus trade
-                            trade_data = genfromtxt(input_path + alloc + '_' + flow + '_' + s
-                                                    + '_domestic_flows_aus.csv', delimiter=',')
+                            for s in sectors:
+                                print('......' + s)
 
-                            if trade_data.ndim > 1:
-                                trade_data = np.sum(trade_data, axis=1)  # sum over the port dimension
+                                save_fname_base = (results_path + flow + '_' + alloc + '_' + scale + '_' + c
+                                                   + '_cbar' + str(cb) + '_' + s + '_discol' + str(dc)
+                                                   + '_' + y).lower()
 
-                            save_fname = save_fname_base + '_aus' + '.png'
-                            colour_polygons_by_vector(trade_data, all_shapes, aus_sa2s, save_fname
-                                                      , bounding_box=aus_bounding_box, normalisation=scale
-                                                      , colour_map=c, attach_colorbar=cb, discrete_bins=dc)
+                                # Whole of Aus trade
+                                trade_data = genfromtxt(input_path + alloc + '_' + flow + '_' + s
+                                                        + '_domestic_flows_aus' + '_' + y + '.csv', delimiter=',')
 
-                            # Queensland trade
-                            #  Only through port of Brisbane
-                            region = 'qld'
-                            port_name = 'Brisbane'
-                            data_fname = input_path + alloc + '_' + flow + '_' + s + '_domestic_flows_qld.csv'
-                            if isfile(data_fname):
-                                trade_data = genfromtxt(data_fname, delimiter=',')
-                                matching_ports = get_port_index(port_name, port_locations)
+                                if trade_data.ndim > 1:
+                                    trade_data = np.sum(trade_data, axis=1)  # sum over the port dimension
 
-                                #   Squash the totals
-                                a = np.array(trade_data)
-                                region_totals = None
-                                for m in matching_ports:
-                                    if region_totals is None:
-                                        region_totals = a[:, m]
-                                    else:
-                                        region_totals = region_totals + a[:, m]
-
-                                save_fname = save_fname_base + '_' + region + '_' + port_name + '.png'
-                                colour_polygons_by_vector(region_totals, all_shapes, qld_sa2_members, save_fname
-                                                          , bounding_box=qld_bounding_box, normalisation=scale
+                                save_fname = save_fname_base + '_aus' + '.png'
+                                colour_polygons_by_vector(trade_data, all_shapes, aus_sa2s, save_fname
+                                                          , bounding_box=aus_bounding_box, normalisation=scale
                                                           , colour_map=c, attach_colorbar=cb, discrete_bins=dc)
 
-                            #   All ports
-                            # save_fname = save_fname_base + '_' + region + '.png'
-                            # colour_polygons_by_vector(trade_data, all_shapes, qld_sa2_members, save_fname, aus_bounding_box
-                            #                           , normalisation=scale, colour_map=c, attach_colorbar=cb)
+                                # Queensland trade
+                                #  Only through port of Brisbane
+                                region = 'qld'
+                                port_name = 'Brisbane'
+                                data_fname = (input_path + alloc + '_' + flow + '_' + s + '_domestic_flows_qld'
+                                              + '_' + y + '.csv')
 
+                                if isfile(data_fname):
+                                    trade_data = genfromtxt(data_fname, delimiter=',')
+                                    matching_ports = get_port_index(port_name, port_locations)
+
+                                    #   Squash the totals
+                                    a = np.array(trade_data)
+                                    region_totals = None
+                                    for m in matching_ports:
+                                        if region_totals is None:
+                                            region_totals = a[:, m]
+                                        else:
+                                            region_totals = region_totals + a[:, m]
+
+                                    save_fname = save_fname_base + '_' + region + '_' + port_name + '.png'
+                                    colour_polygons_by_vector(region_totals, all_shapes, qld_sa2_members, save_fname
+                                                              , bounding_box=qld_bounding_box, normalisation=scale
+                                                              , colour_map=c, attach_colorbar=cb, discrete_bins=dc)
+
+                                else:
+                                    print('Could not find ' + data_fname)
 
 # Plot using same colour scales
 
