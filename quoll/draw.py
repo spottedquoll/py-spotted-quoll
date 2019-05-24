@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
-from quoll.metrics import closest_point
 from scipy.spatial import distance
 
 
