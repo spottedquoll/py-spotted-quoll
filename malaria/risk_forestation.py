@@ -30,27 +30,29 @@ y_label_str = 'Cumulative change in forestation since 1995 (log$_{10}$ [''000 km
 # Settings
 country_groups = 3
 the_colours = pinky_greens()
-
-# Sampling (plot every nth sample)
-sampling_opts = [1, 3]
+sampling_opts = [1, 3]  # Sampling (plot every nth sample)
+line_thickness_scaler = 4
 
 # Process each subset
 for i in range(country_groups):
 
     # Unpack
-    malaria_trade = array(h5_store['malaria_products_in_trade_' + str(i+1)])
+    malaria_products_trade = array(h5_store['malaria_products_in_trade_' + str(i + 1)])
     deforestation = array(h5_store['deforestation_' + str(i+1)])
-    net_trade = array(h5_store['malaria_net_trade_' + str(i + 1)])
+    malaria_net_trade = array(h5_store['malaria_net_trade_' + str(i + 1)])
+    malaria_net_trade_pre_scaled = array(h5_store['malaria_net_trade_scaled_' + str(i + 1)])
+
     countries = country_labels[i]
 
     # Scale
-    net_trade_scaled = multiply(sign(net_trade), log10(abs(net_trade)))
-    malaria_trade_scaled = log10(abs(malaria_trade))
+    net_trade_scaled = multiply(sign(malaria_net_trade), log10(abs(malaria_net_trade))) # this normalised between 0 and 1
+    # malaria_trade_scaled = log10(abs(malaria_products_trade))z
 
     # Tests
-    assert(len(countries) == malaria_trade.shape[1])
-    assert (len(countries) == deforestation.shape[1])
-    assert (len(countries) == net_trade.shape[1])
+    assert(len(countries) == malaria_products_trade.shape[1])
+    assert(len(countries) == deforestation.shape[1])
+    assert(len(countries) == malaria_net_trade.shape[1])
+    assert(len(countries) == malaria_net_trade_pre_scaled.shape[1])
 
     for s in sampling_opts:
 
@@ -60,9 +62,9 @@ for i in range(country_groups):
         for idx, country in enumerate(countries):
 
             # x, y, z
-            x = net_trade_scaled[:, idx]  # trade balance of malaria implicated products
+            x = malaria_products_trade[:, idx]  # trade balance of malaria implicated products
             y = deforestation[:, idx]  # net forestation
-            line_thickness = malaria_trade_scaled[:, idx]  # malaria risk trade
+            line_thickness = malaria_net_trade_pre_scaled[:, idx] * line_thickness_scaler  # malaria risk trade
 
             # Sub-sample
             x_sample = x[::s].copy()
@@ -77,14 +79,28 @@ for i in range(country_groups):
 
         # Axes options
         plt.autoscale(tight=True)
-        ax.axhline(0, color='black', linewidth=0.4, label='_nolegend_')
-        ax.axvline(0, color='black', linewidth=0.4, label='_nolegend_')
+        ax.axhline(0, color='grey', linewidth=0.4, label='_nolegend_')
+        ax.axvline(0, color='grey', linewidth=0.4, label='_nolegend_')
 
         # Labels
         plt.xlabel(x_label_str, fontsize=10, labelpad=15)
         plt.ylabel(y_label_str, fontsize=10, labelpad=15)
-        plt.legend(countries, loc='upper right', fontsize='small', frameon=False, bbox_to_anchor=(1.4, 0.75))
 
+        # Legend
+        legend = plt.legend(countries, loc='best', fontsize='small', frameon=False)
+        #   Make all the legend lines the same thickness
+        for line in legend.get_lines():
+            line.set_linewidth(2.5)
+
+        # Outer frame colour
+        plt.setp(ax.spines.values(), color='grey')
+        plt.setp([ax.get_xticklines(), ax.get_yticklines()], color='grey')
+
+        # Limits
+        plt.ylim(bottom=1.05*deforestation.min(), top=1.05*deforestation.max())
+        plt.xlim(left=1.05 * malaria_products_trade.min(), right=1.05 * malaria_products_trade.max())
+
+        # Save
         plot_fname = 'malaria_forestry_trends_c' + str(i) + '_s' + str(s) + '.png'
         fig.savefig(save_dir + plot_fname, dpi=700, bbox_inches='tight')
 
