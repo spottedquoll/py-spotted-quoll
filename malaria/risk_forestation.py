@@ -1,8 +1,9 @@
 import h5py
-import numpy as np
+from numpy import array, log10, sign, multiply, concatenate
 import csv
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from quoll.discrete_colour_lists import pinky_greens
 
 # Notes
 # x-axis: trade balance of malaria implicated products
@@ -22,61 +23,71 @@ with open(processed_data_dir + 'country_labels.csv', 'r') as f:
     reader = csv.reader(f)
     country_labels = list(reader)
 
-# List of colours
-the_colours = ['bright violet', 'fuchsia', 'pinkish red', 'pastel pink', 'pinkish grey', 'robin egg blue', 'turquoise'
-               , 'blue green', 'dark teal', 'forrest green']
+# Axis labels
+x_label_str = 'Net trade balance of deforestation-implicated products (log$_{10}$[\$bn])'
+y_label_str = 'Cumulative change in forestation since 1995 (log$_{10}$ [''000 km$^2$])'
 
 # Settings
 country_groups = 3
+the_colours = pinky_greens()
 
+# Sampling (plot every nth sample)
+sampling_opts = [1, 3]
+
+# Process each subset
 for i in range(country_groups):
 
-    # Figure object
-    legend_labels = []
-    fig, ax = plt.subplots()
-
     # Unpack
-    malaria_trade = np.array(h5_store['malaria_products_in_trade_' + str(i+1)])
-    deforestation = np.array(h5_store['deforestation_' + str(i+1)])
-    new_trade = np.array(h5_store['malaria_net_trade_' + str(i+1)])
-    countries = country_labels[0]
+    malaria_trade = array(h5_store['malaria_products_in_trade_' + str(i+1)])
+    deforestation = array(h5_store['deforestation_' + str(i+1)])
+    net_trade = array(h5_store['malaria_net_trade_' + str(i + 1)])
+    countries = country_labels[i]
+
+    # Scale
+    net_trade_scaled = multiply(sign(net_trade), log10(abs(net_trade)))
+    malaria_trade_scaled = log10(abs(malaria_trade))
 
     # Tests
     assert(len(countries) == malaria_trade.shape[1])
     assert (len(countries) == deforestation.shape[1])
-    assert (len(countries) == new_trade.shape[1])
+    assert (len(countries) == net_trade.shape[1])
 
-    for idx, country in enumerate(countries):
+    for s in sampling_opts:
 
-        # x, y, z
-        x = new_trade[:, idx]  # trade balance of malaria implicated products
-        y = deforestation[:, idx]  # net forestation
-        line_thickness = malaria_trade[:, idx]  # malaria risk trade
+        # Create figure object
+        fig, ax = plt.subplots()
 
-        # Line segments
-        points = np.array([x, y]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        ax.add_collection(LineCollection(segments, linewidths=line_thickness, color='xkcd:' + the_colours[idx]))
+        for idx, country in enumerate(countries):
 
-        # Legend
-        legend_labels.append(country)
+            # x, y, z
+            x = net_trade_scaled[:, idx]  # trade balance of malaria implicated products
+            y = deforestation[:, idx]  # net forestation
+            line_thickness = malaria_trade_scaled[:, idx]  # malaria risk trade
 
-    # plt.ylabel('aij', fontsize=10, labelpad=10)
-    # plt.ylim(bottom=-0.02)
-    # plt.xticks(y_tick_marks, y_labels)
-    # plt.title('i=' + str(l_i) + ', j=' + str(l_j))
-    plt.legend(countries, loc='upper right', fontsize='small', frameon=False)
+            # Sub-sample
+            x_sample = x[::s].copy()
+            y_sample = y[::s].copy()
+            line_thickness_sample = line_thickness[::s].copy()
 
-    plot_fname = 'malaria_forestry_trends_' + str(i) + '.png'
-    plt.autoscale(tight=True)
-    fig.savefig(save_dir + plot_fname, dpi=700, bbox_inches='tight')
-    plt.clf()
+            # Line segments
+            points = array([x_sample, y_sample]).T.reshape(-1, 1, 2)
+            segments = concatenate([points[:-1], points[1:]], axis=1)
+            ax.add_collection(LineCollection(segments, linewidths=line_thickness_sample
+                                             , color='xkcd:' + the_colours[idx]))
 
-# x = new_trade[:, idx]  # trade balance of malaria implicated products
-# y = deforestation[:, idx]  # net forestation
-# line_thickness = malaria_trade[:, idx]  # malaria risk trade
-# points = np.array([x, y]).T.reshape(-1, 1, 2)
-# segments = np.concatenate([points[:-1], points[1:]], axis=1)
-# lc = LineCollection(segments, linewidths=line_thickness, color='blue')
-# fig, a = plt.subplots()
-# a.add_collection(lc)
+        # Axes options
+        plt.autoscale(tight=True)
+        ax.axhline(0, color='black', linewidth=0.4, label='_nolegend_')
+        ax.axvline(0, color='black', linewidth=0.4, label='_nolegend_')
+
+        # Labels
+        plt.xlabel(x_label_str, fontsize=10, labelpad=15)
+        plt.ylabel(y_label_str, fontsize=10, labelpad=15)
+        plt.legend(countries, loc='upper right', fontsize='small', frameon=False, bbox_to_anchor=(1.4, 0.75))
+
+        plot_fname = 'malaria_forestry_trends_c' + str(i) + '_s' + str(s) + '.png'
+        fig.savefig(save_dir + plot_fname, dpi=700, bbox_inches='tight')
+
+        # Finished with this figure
+        plt.clf()
+        plt.close(fig)
