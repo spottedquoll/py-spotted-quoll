@@ -1,15 +1,16 @@
 from trade_allocation.spatial import read_shape_files, read_sa2_meta
 import h5py
 from trade_allocation.lib import get_port_index, colour_polygons_by_vector, collate_weights
-from quoll.utils import get_local_volume
 import pyexcel as pe
 from numpy import genfromtxt
 import numpy as np
 from os.path import isfile
-
+from quoll.utils import get_local_volume
+from quoll.numeric import normalized
+import itertools
 
 volume = get_local_volume()
-work_path = volume + 'more_projects/nesting/'
+work_path = volume + 'more_projects/emily1/Projects/2018_nesting_paper/visualise_allocation/'
 asgs_path = work_path + 'ASGS/SA2/2011/'
 input_path = work_path + 'allocation_results/'
 results_path = work_path + 'finished_figures/'
@@ -25,9 +26,8 @@ if len(all_shapes) != len(sa2_meta_store):
 #   QLD
 filename = input_path + 'state_sa2_members_qld.h5'
 f = h5py.File(filename, 'r')
-qld_sa2_members = list(f['sa2_members'])
-#   Aus
-aus_sa2s = list(range(1, 2215))
+qld_sa2_members = list(f['sa2_members'])  # Qld
+aus_sa2s = list(range(1, 2215))  # Aus
 
 # Port names and locations
 port_locations = []
@@ -35,92 +35,74 @@ records = pe.iget_records(file_name=str(work_path) + '/ABS/' + 'Australian_port_
 for row in records:
     port_locations.append(row)
 
+# Figure bounding box [x_min, x_max, y_min, y_max]
+aus_bounds = [110, 155, -45, -5]
+qld_bounds = [136, 155, -30, -8]
+
 # Options
 allocations = ['production', 'gravity', 'combined']
 trade_directions = ['exports']  # 'imports',
 colour_maps = ['plasma']  # , 'Greys', 'hot', 'viridis', 'BuPu', 'PuRd' 'plasma_r', 'Greys', 'Greys_r',
-scalings = ['linear']  # , 'symlog' normalisation of figures
-aus_bounding_box = [110, 155, -45, -5]  # x_min, x_max, y_min, y_max]
-qld_bounding_box = [136, 155, -30, -8]
+colour_scalings = ['linear', 'symlog']  # None, 'symlog' # colour normalisation
 colour_bar = [False]  # True,
-discrete_colours = [15]  # False
-sectors = ['beef', 'meat']  # , 'beef'
-years = ['2000', '2009']  # '2005',
+discrete_colours = [15, None]  # 5, False
+sectors = ['beef']  # , 'beef', 'meat'
+years = ['2000']  # '2005', '2009'
+hard_norm = [False]  #  True, normalise data prior to plotting
+force_colour_scale = [False, True]
+fix_combined_scaling = True
+
+plot_trade_regions = [{'aus_region': 'qld', 'port': 'Brisbane', 'sa2s': qld_sa2_members, 'bounds': qld_bounds},
+                      {'aus_region': 'aus', 'port': None, 'sa2s': aus_sa2s, 'bounds': aus_bounds}]
+
+iterable = list(itertools.product(years, trade_directions, force_colour_scale, colour_scalings
+                                  , colour_maps, colour_bar, discrete_colours, sectors, hard_norm
+                                  , plot_trade_regions))
 
 # Plot maps
-for y in years:
-    print(y)
+for item in iterable:
 
-    # extract weights for QA
-    for flow in trade_directions:
-        collate_weights(y, allocations, input_path, flow, port_locations, 'Brisbane', results_path)
+    # Unpack
+    y, trade_direction, fsc, cn, clr_map, cb, dc, commodity, hn, trade_regions = (item[0], item[1], item[2]
+                                                                                         , item[3], item[4], item[5]
+                                                                                         , item[6], item[7], item[8]
+                                                                                         , item[9])
 
-    for flow in trade_directions:
-        print('Plotting ' + flow)
+    collated_weights = collate_weights(y, allocations, input_path, trade_direction, port_locations, commodity
+                                       , results_path, trade_regions['aus_region'], port_name=trade_regions['port'])
 
-        for alloc in allocations:
-            print('.' + alloc)
+    if fix_combined_scaling:
+        collated_weights['combinedavg'] = list(collated_weights[['production', 'gravity']].mean(axis=1))
 
-            for scale in scalings:
-                print('..' + scale)
+    # Common scaling for all figures
+    if fsc is True:
+        scaling_limits = (collated_weights.min().min()*0.95, collated_weights.max().max()*1.05)
+    else:
+        scaling_limits = None
 
-                for c in colour_maps:
-                    print('...' + c)
+    columns = list(collated_weights)
+    for c in columns:
 
-                    for cb in colour_bar:
-                        print('....cbar:' + str(cb))
+        # Make description and filename
+        port_name = trade_regions['port']
+        if port_name is None:
+            port_name = 'allports'
+        description = (trade_direction + '_' + trade_regions['aus_region'] + '_' + port_name + '_' + c + '_cs'
+                       + str(cn) + '_' + clr_map + '_cb' + str(cb) + '_' + commodity
+                       + '_dc' + str(dc) + '_fsc' + str(fsc) + '_hn' + str(hn) + '_' + y).lower()
 
-                        for dc in discrete_colours:
-                            print('.....discol:' + str(dc))
+        save_fname = results_path + description + '.png'
 
-                            for s in sectors:
-                                print('......' + s)
+        print('Plotting: ' + description)
+        data = list(collated_weights[c])
 
-                                save_fname_base = (results_path + flow + '_' + alloc + '_' + scale + '_' + c
-                                                   + '_cbar' + str(cb) + '_' + s + '_discol' + str(dc)
-                                                   + '_' + y).lower()
+        # Scale data prior to plotting
+        if hn:
+            data = normalized(data)[0]
 
-                                # Whole of Aus trade
-                                trade_data = genfromtxt(input_path + alloc + '_' + flow + '_' + s
-                                                        + '_domestic_flows_aus' + '_' + y + '.csv', delimiter=',')
+        # Send to plotter
+        colour_polygons_by_vector(data, all_shapes, trade_regions['sa2s'], save_fname
+                                  , bounding_box=trade_regions['bounds'], normalisation=cn, colour_map=clr_map
+                                  , attach_colorbar=cb, discrete_bins=dc, colour_min_max=scaling_limits)
 
-                                if trade_data.ndim > 1:
-                                    trade_data = np.sum(trade_data, axis=1)  # sum over the port dimension
-
-                                save_fname = save_fname_base + '_aus' + '.png'
-                                colour_polygons_by_vector(trade_data, all_shapes, aus_sa2s, save_fname
-                                                          , bounding_box=aus_bounding_box, normalisation=scale
-                                                          , colour_map=c, attach_colorbar=cb, discrete_bins=dc)
-
-                                # Queensland trade
-                                #  Only through port of Brisbane
-                                region = 'qld'
-                                port_name = 'Brisbane'
-                                data_fname = (input_path + alloc + '_' + flow + '_' + s + '_domestic_flows_qld'
-                                              + '_' + y + '.csv')
-
-                                if isfile(data_fname):
-                                    trade_data = genfromtxt(data_fname, delimiter=',')
-                                    matching_ports = get_port_index(port_name, port_locations)
-
-                                    #   Squash the totals
-                                    a = np.array(trade_data)
-                                    region_totals = None
-                                    for m in matching_ports:
-                                        if region_totals is None:
-                                            region_totals = a[:, m]
-                                        else:
-                                            region_totals = region_totals + a[:, m]
-
-                                    save_fname = save_fname_base + '_' + region + '_' + port_name + '.png'
-                                    colour_polygons_by_vector(region_totals, all_shapes, qld_sa2_members, save_fname
-                                                              , bounding_box=qld_bounding_box, normalisation=scale
-                                                              , colour_map=c, attach_colorbar=cb, discrete_bins=dc)
-
-                                else:
-                                    print('Could not find ' + data_fname)
-
-# Plot using same colour scales
-
-
-print('Finished')
+print('All finished')
