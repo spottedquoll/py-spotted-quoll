@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from production_recipe.helpers import get_recipe_df, perform_cleaning
 
-recipe_directory = '/Volumes/slim/2017_ProductionRecipes/'
+recipe_directory = '/Volumes/slim/more_projects/emily1/Projects/2017_ProductionRecipes/'
 dataset_dir = recipe_directory + '/data/'
 results_dir = recipe_directory + '/results/'
 
