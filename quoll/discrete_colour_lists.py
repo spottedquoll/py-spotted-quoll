@@ -7,5 +7,5 @@ def pinky_greens():
 
 def pinky_greens_ii():
 
-    return ['bright violet', 'fuchsia', 'medium pink', 'lavender pink', 'baby pink', 'light grey blue', 'turquoise'
-            , 'tea', 'kelley green', 'forrest green']
+    return ['bright violet', 'fuchsia', 'medium pink', 'lavender pink', 'baby pink', 'cloudy blue', 'tea'
+            , 'green teal', 'kelley green', 'forrest green']

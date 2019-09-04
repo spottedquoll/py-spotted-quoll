@@ -235,7 +235,7 @@ plt.close(fig)
 s = 1
 
 # Create figure object
-fig, ax = plt.subplots(1, 3, figsize=(15, 9))
+fig, ax = plt.subplots(1, 3, figsize=(16, 9))
 fig.subplots_adjust(wspace=0.15)
 
 # Process each subset
@@ -292,12 +292,13 @@ for i in range(country_groups):
     ax[i].axvline(0, color='grey', linewidth=0.4, label='_nolegend_')
 
     # Legend
-    if i == 2:
-        legend_position = 'lower left'
+    if i == 1:
+        legend_position = 'lower left' #'upper right'
     else:
-        legend_position = 'best'
+        legend_position = 'lower left'
+    #legend_position = 'best'
 
-    legend = ax[i].legend(countries, loc='best', fontsize=10, frameon=False)
+    legend = ax[i].legend(countries, loc=legend_position, fontsize=9, frameon=False)
     #   Make all the legend lines the same thickness
     for line in legend.get_lines():
         line.set_linewidth(1.5)
@@ -309,13 +310,28 @@ for i in range(country_groups):
     # Limits
     ax[i].set_ylim(bottom=1.1 * deforestation.min(), top=1.1 * deforestation.max())
     max_horizontal_limit = max(abs(malaria_products_trade.min()),abs(malaria_products_trade.max()))
-    ax[i].set_xlim(left=-1.05 * max_horizontal_limit, right=1.05 * max_horizontal_limit)
+    ax[i].set_xlim(left=-1.1 * max_horizontal_limit, right=1.1 * max_horizontal_limit)
 
     ax[i].xaxis.set_major_locator(ticker.MultipleLocator(0.5))
 
 # Shared axis labels
 plt.text(-5, -3.25, x_label_str, ha='center', va='center', fontsize=13)
-plt.text(-13, 0.4, y_label_str, ha='center', va='center', rotation='vertical', fontsize=13)
+plt.text(-13.5, 0.4, y_label_str, ha='center', va='center', rotation='vertical', fontsize=13)
+
+# Quadrant labels
+label_font_size = 9
+plt.text(-3.7, -0.04, 'more exports', ha='center', va='center', fontsize=label_font_size)
+plt.text(-6.8, -0.04, 'less exports', ha='center', va='center', fontsize=label_font_size)
+plt.text(-8.9, 0.34, 'afforestation', ha='center', va='center', fontsize=label_font_size)
+plt.text(-8.9, 0.12, 'deforestation', ha='center', va='center', fontsize=label_font_size)
+
+# Year labels
+plt.text(-9.7, -0.1, '2000', ha='center', va='center', fontsize=label_font_size)  # Tanzania
+plt.text(-9.4, -1.2, '2015', ha='center', va='center', fontsize=label_font_size)
+plt.text(-5.8, 1.3, '2000', ha='center', va='center', fontsize=label_font_size)  # Spain
+plt.text(-6.4, 2.5, '2015', ha='center', va='center', fontsize=label_font_size)
+plt.text(-0.8, 1.3, '2000', ha='center', va='center', fontsize=label_font_size)  # China
+plt.text(-1.6, 2.5, '2015', ha='center', va='center', fontsize=label_font_size)
 
 # Save
 plot_fname = 'malaria_forestry_trends_c_all_s1_pl1_ft1_rev3' + '.png'
