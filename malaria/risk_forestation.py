@@ -5,7 +5,7 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib import ticker
-from quoll.discrete_colour_lists import pinky_greens
+from quoll.discrete_colour_lists import pinky_greens_ii
 
 # Notes
 # x-axis: trade balance of malaria implicated products
@@ -13,7 +13,7 @@ from quoll.discrete_colour_lists import pinky_greens
 # weighting: malaria risk
 
 # Paths
-work_directory = '/Volumes/slim/Projects/isa_projects/malaria/figure_fix_2/'
+work_directory = '/Volumes/slim/Projects/isa_projects/Archive/2019/malaria/figure_fix_2/'
 processed_data_dir = work_directory + 'processed_data_ml/'
 save_dir = work_directory + 'figs/'
 
@@ -31,9 +31,9 @@ y_label_str = 'Cumulative change in forestation since 1995 (log$_{10}$ [''000 km
 
 # Settings
 country_groups = 3
-the_colours = pinky_greens()
+the_colours = pinky_greens_ii()
 sampling_opts = [1, 3]  # Sampling (plot every nth sample)
-line_thickness_scaler = 3
+line_thickness_scaler = 4
 party_lights = [0, 1]
 pl_sample_freq = 3  # plot every nth point
 fading_tails = [1, 0]
@@ -224,6 +224,101 @@ plt.text(-11.7, 0.4, y_label_str, ha='center', va='center', rotation='vertical',
 
 # Save
 plot_fname = 'malaria_forestry_trends_c_all_s1_pl1_ft1' + '.png'
+fig.savefig(save_dir + plot_fname, dpi=700, bbox_inches='tight')
+
+# Finished with this figure
+plt.clf()
+plt.close(fig)
+
+# Third round changes to plots
+# Make a joined subplot
+s = 1
+
+# Create figure object
+fig, ax = plt.subplots(1, 3, figsize=(15, 9))
+fig.subplots_adjust(wspace=0.15)
+
+# Process each subset
+for i in range(country_groups):
+
+    # Unpack
+    malaria_products_trade = array(h5_store['malaria_products_in_trade_' + str(i + 1)])
+    deforestation = array(h5_store['deforestation_' + str(i+1)])
+    malaria_net_trade_pre_scaled = array(h5_store['malaria_net_trade_scaled_' + str(i + 1)])
+    malaria_net_trade_signs = array(h5_store['malaria_net_trade_sign_' + str(i + 1)])
+
+    countries = country_labels[i]
+
+    for idx, country in enumerate(countries):
+
+        # x, y, z
+        x = malaria_products_trade[:, idx]  # trade balance of malaria implicated products
+        y = deforestation[:, idx]  # net forestation
+        line_thickness = malaria_net_trade_pre_scaled[:, idx] * line_thickness_scaler  # malaria risk trade
+        sign_of_malaria_trade = np.mean(malaria_net_trade_signs[:, idx])
+
+        # Sub-sample
+        x_sample = x[::s].copy()
+        y_sample = y[::s].copy()
+        line_thickness_sample = line_thickness[::s].copy()
+
+        # Line style (risk import or export)
+        if sign_of_malaria_trade < 0:
+            ls = (0, (2.5, 4.5)) # dotted
+        else:
+            ls = 'solid'
+
+        # Line segments
+        points = array([x_sample, y_sample]).T.reshape(-1, 1, 2)
+        segments = concatenate([points[:-1], points[1:]], axis=1)
+        ax[i].add_collection(LineCollection(segments, linewidths=line_thickness_sample
+                                            , color='xkcd:' + the_colours[idx], alpha=line_seg_alpha
+                                            , linestyle=ls))
+
+        # Add additional data point markers
+        x_sample_pl = x[::pl_sample_freq].copy()
+        y_sample_pl = y[::pl_sample_freq].copy()
+        line_thick_sample_pl = line_thickness[::pl_sample_freq].copy()
+
+        #   Opacity of marker
+        alphas = np.linspace(ft_alpha_start, ft_alpha_end, len(x_sample_pl))
+        colour_array = np.asarray([(0, 0, 0, 1) for a in alphas])
+
+        ax[i].scatter(x_sample_pl, y_sample_pl, s=line_thick_sample_pl, c=colour_array, label='_nolegend_')
+
+    # Axes lines
+    ax[i].autoscale(tight=True)
+    ax[i].axhline(0, color='grey', linewidth=0.4, label='_nolegend_')
+    ax[i].axvline(0, color='grey', linewidth=0.4, label='_nolegend_')
+
+    # Legend
+    if i == 2:
+        legend_position = 'lower left'
+    else:
+        legend_position = 'best'
+
+    legend = ax[i].legend(countries, loc='best', fontsize=10, frameon=False)
+    #   Make all the legend lines the same thickness
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+
+    # Outer frame colour
+    plt.setp(ax[i].spines.values(), color='grey')
+    plt.setp([ax[i].get_xticklines(), ax[i].get_yticklines()], color='grey')
+
+    # Limits
+    ax[i].set_ylim(bottom=1.1 * deforestation.min(), top=1.1 * deforestation.max())
+    max_horizontal_limit = max(abs(malaria_products_trade.min()),abs(malaria_products_trade.max()))
+    ax[i].set_xlim(left=-1.05 * max_horizontal_limit, right=1.05 * max_horizontal_limit)
+
+    ax[i].xaxis.set_major_locator(ticker.MultipleLocator(0.5))
+
+# Shared axis labels
+plt.text(-5, -3.25, x_label_str, ha='center', va='center', fontsize=13)
+plt.text(-13, 0.4, y_label_str, ha='center', va='center', rotation='vertical', fontsize=13)
+
+# Save
+plot_fname = 'malaria_forestry_trends_c_all_s1_pl1_ft1_rev3' + '.png'
 fig.savefig(save_dir + plot_fname, dpi=700, bbox_inches='tight')
 
 # Finished with this figure
