@@ -326,12 +326,12 @@ plt.text(-8.9, 0.34, 'afforestation', ha='center', va='center', fontsize=label_f
 plt.text(-8.9, 0.12, 'deforestation', ha='center', va='center', fontsize=label_font_size)
 
 # Year labels
-plt.text(-9.7, -0.1, '2000', ha='center', va='center', fontsize=label_font_size)  # Tanzania
+plt.text(-9.7, -0.06, '2000', ha='center', va='center', fontsize=label_font_size)  # Tanzania
 plt.text(-9.4, -1.2, '2015', ha='center', va='center', fontsize=label_font_size)
 plt.text(-5.8, 1.3, '2000', ha='center', va='center', fontsize=label_font_size)  # Spain
 plt.text(-6.4, 2.5, '2015', ha='center', va='center', fontsize=label_font_size)
-plt.text(-0.8, 1.3, '2000', ha='center', va='center', fontsize=label_font_size)  # China
-plt.text(-1.6, 2.5, '2015', ha='center', va='center', fontsize=label_font_size)
+plt.text(-0.42, 1.3, '2000', ha='center', va='center', fontsize=label_font_size)  # China
+plt.text(-1.6, 2.55, '2015', ha='center', va='center', fontsize=label_font_size)
 
 # Save
 plot_fname = 'malaria_forestry_trends_c_all_s1_pl1_ft1_rev3' + '.png'

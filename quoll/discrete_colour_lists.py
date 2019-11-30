@@ -9,3 +9,9 @@ def pinky_greens_ii():
 
     return ['bright violet', 'fuchsia', 'medium pink', 'lavender pink', 'baby pink', 'cloudy blue', 'tea'
             , 'green teal', 'kelley green', 'forrest green']
+
+
+def pinky_greens_iii():
+
+    return ['bright violet', 'fuchsia', 'medium pink', 'lavender pink', 'baby pink', 'turquoise blue', 'teal'
+            , 'greenish teal', 'jade green', 'dark green']
