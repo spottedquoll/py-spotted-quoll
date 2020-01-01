@@ -15,3 +15,10 @@ def pinky_greens_iii():
 
     return ['bright violet', 'fuchsia', 'medium pink', 'lavender pink', 'baby pink', 'turquoise blue', 'teal'
             , 'greenish teal', 'jade green', 'dark green']
+
+
+def kyoto_colours():
+
+    clist = ['xkcd:lavender', 'xkcd:cerulean', 'xkcd:raspberry', 'xkcd:teal blue']
+
+    return clist
