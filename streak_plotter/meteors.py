@@ -5,6 +5,7 @@ from matplotlib.collections import LineCollection
 from numpy import array, concatenate, random, linspace
 from streak_plotter.lib import symmetric_log
 from quoll.discrete_colour_lists import kyoto_colours
+from matplotlib import colors
 
 # Directories
 data_dir = os.environ['streak_dir']
@@ -61,6 +62,7 @@ print('Plotting meteors')
 image_quality = 800  # dpi
 y_is_walk = False
 y_variation_step = 0.03
+colour_habits = True
 the_colours = kyoto_colours()
 z = 0
 
@@ -77,6 +79,11 @@ for h in select_habits:
     steaks_h = streaks_df[streaks_df.habit == h]
 
     print('Found ' + str(len(steaks_h['streak_num'].unique())) + ' streaks')
+
+    if colour_habits:
+        c_series = the_colours[z]
+    else:
+        c_series = 'black'
 
     for s in steaks_h['streak_num'].unique():
         subset = steaks_h[steaks_h.streak_num == s]
@@ -97,7 +104,8 @@ for h in select_habits:
             # Line segments
             points = array([x, y]).T.reshape(-1, 1, 2)
             segments = concatenate([points[:-1], points[1:]], axis=1)
-            ax.add_collection(LineCollection(segments, linewidths=line_thickness, color=the_colours[z], alpha=0.8))
+
+            ax.add_collection(LineCollection(segments, linewidths=line_thickness, color=c_series, alpha=0.8))
 
             x_limits = [min(x[0], x_limits[0]), max(x[1], x_limits[1])]
             y_limits = [min(y[0], y_limits[0]), max(y[1], y_limits[1])]
