@@ -1,3 +1,4 @@
+import os
 import h5py
 from numpy import array, log10, sign, multiply, concatenate
 import numpy as np
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib import ticker
 from quoll.discrete_colour_lists import pinky_greens_ii
+import string
 
 # Notes
 # x-axis: trade balance of malaria implicated products
@@ -13,7 +15,7 @@ from quoll.discrete_colour_lists import pinky_greens_ii
 # weighting: malaria risk
 
 # Paths
-work_directory = '/Volumes/slim/Projects/isa_projects/Archive/2019/malaria/figure_fix_2/'
+work_directory = os.environ['work_dir'] # '/Volumes/slim/Projects/isa_projects/Archive/2019/malaria/figure_fix_2/'
 processed_data_dir = work_directory + 'processed_data_ml/'
 save_dir = work_directory + 'figs/'
 
@@ -233,6 +235,7 @@ plt.close(fig)
 # Third round changes to plots
 # Make a joined subplot
 s = 1
+alphabet = list(string.ascii_lowercase)
 
 # Create figure object
 fig, ax = plt.subplots(1, 3, figsize=(16, 9))
@@ -314,14 +317,17 @@ for i in range(country_groups):
 
     ax[i].xaxis.set_major_locator(ticker.MultipleLocator(0.5))
 
+    # Subplot labels
+    ax[i].title.set_text('(' + alphabet[i] + ')')
+
 # Shared axis labels
-plt.text(-5, -3.25, x_label_str, ha='center', va='center', fontsize=13)
+plt.text(-5, -3.29, x_label_str, ha='center', va='center', fontsize=13)
 plt.text(-13.5, 0.4, y_label_str, ha='center', va='center', rotation='vertical', fontsize=13)
 
 # Quadrant labels
 label_font_size = 9
 plt.text(-3.7, -0.04, 'more exports', ha='center', va='center', fontsize=label_font_size)
-plt.text(-6.8, -0.04, 'less exports', ha='center', va='center', fontsize=label_font_size)
+plt.text(-6.8, -0.04, 'fewer exports', ha='center', va='center', fontsize=label_font_size)
 plt.text(-8.9, 0.34, 'afforestation', ha='center', va='center', fontsize=label_font_size)
 plt.text(-8.9, 0.12, 'deforestation', ha='center', va='center', fontsize=label_font_size)
 
